@@ -1,0 +1,183 @@
+/* === TSM ASSISTANT - CLEAN & SAFE VERSION === */
+.tsm-bot-bubble {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    width: 62px;
+    height: 62px;
+    background: linear-gradient(135deg, #4361ee, #3f37c9);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 9999;
+    box-shadow: 0 10px 30px rgba(67,97,238,0.5);
+    border: 4px solid white;
+    transition: all 0.3s ease;
+}
+
+.tsm-bot-bubble:hover { transform: scale(1.15); }
+
+.tsm-bot-bubble img {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+}
+
+.tsm-bot-bubble .online-dot {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    width: 14px;
+    height: 14px;
+    background: #4ade80;
+    border: 3px solid white;
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(74,222,128,0.6);
+}
+
+/* CHAT WINDOW - ONLY ONE SYSTEM */
+#tsmBotWindow {
+    position: fixed;
+    bottom: 100px;
+    right: 28px;
+    width: 380px;
+    height: 560px;
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 25px 70px rgba(0,0,0,0.3);
+    z-index: 9999;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid #eee;
+    font-family: 'Poppins', sans-serif;
+}
+
+#tsmBotWindow.open {
+    display: flex !important;
+}
+
+#tsmBotWindow .bot-header {
+    background: linear-gradient(135deg, #4361ee, #3f37c9);
+    color: white;
+    padding: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#tsmBotWindow .bot-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+#tsmBotWindow .bot-name { font-weight: 600; font-size: 17px; }
+#tsmBotWindow .bot-status { font-size: 12px; opacity: 0.9; }
+
+#tsmBotWindow .bot-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 28px;
+    cursor: pointer;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+}
+
+#tsmBotWindow .bot-close:hover { background: rgba(255,255,255,0.2); }
+
+#tsmBotWindow .bot-messages {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+    background: #f8fafc;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.bot-msg {
+    max-width: 85%;
+    padding: 12px 16px;
+    border-radius: 18px;
+    line-height: 1.5;
+    font-size: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.bot-msg.user-msg {
+    align-self: flex-end;
+    background: #4361ee;
+    color: white;
+}
+
+.bot-msg:not(.user-msg) {
+    align-self: flex-start;
+    background: white;
+}
+
+#tsmBotWindow .bot-quick {
+    padding: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    background: #f1f3f7;
+}
+
+#tsmBotWindow .bot-quick button {
+    padding: 10px 16px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+#tsmBotWindow .bot-quick button:hover {
+    background: #4361ee;
+    color: white;
+    border-color: #4361ee;
+}
+
+#tsmBotWindow .bot-input {
+    display: flex;
+    padding: 12px;
+    background: white;
+    border-top: 1px solid #eee;
+    gap: 10px;
+}
+
+#tsmBotWindow .bot-input input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 1px solid #ddd;
+    border-radius: 25px;
+    outline: none;
+    font-size: 14px;
+}
+
+#tsmBotWindow .bot-input input:focus { border-color: #4361ee; }
+
+#tsmBotWindow .bot-input button {
+    background: #4361ee;
+    color: white;
+    border: none;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+@media (max-width: 480px) {
+    #tsmBotWindow {
+        width: 95%;
+        left: 2.5%;
+        right: 2.5%;
+        bottom: 90px;
+    }
+}

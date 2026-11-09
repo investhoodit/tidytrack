@@ -1,0 +1,33 @@
+{
+    "name": "simitsdk/phpjasperxml",
+    "description": "PHP PDF renderer of open source jasper report studio.",
+    "version": "2.1.14",
+    "require": {
+        "php": ">=7.0",
+        "tecnickcom/tc-lib-pdf":"*",
+        "tecnickcom/tcpdf": "^6.4",
+        "fakerphp/faker": "^1.17",
+        "phpoffice/phpspreadsheet": "^1.20",
+        "ovidigital/js-object-to-json": "^1.1",
+        "ramsey/uuid": "^4.9"         
+    },
+    "autoload": {
+        "psr-4": {
+            "simitsdk\\phpjasperxml\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "kstan",
+            "email": "kstan@simitgroup.com"
+        }
+    ],
+    "license": [
+        "BSD-3-Clause"
+     ],
+     "keywords":[
+         "pdf","print format","jasper","print preview"
+     ],
+     "readme": "README.md"
+
+}

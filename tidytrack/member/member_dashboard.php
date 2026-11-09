@@ -1,0 +1,1620 @@
+<?php
+session_start();
+include '../dp.php';
+include '../track2.php'; // For attendance-related functions
+
+$userId = $_SESSION['user_id'] ?? null;
+$userName = $_SESSION['name'] ?? 'Member';
+$userEmail = $_SESSION['email'] ?? null;
+$userInitial = strtoupper($userName[0]);
+
+
+// $currentRole = strtolower($_SESSION['role'] ?? 'Member');
+$currentRole = strtolower(trim($_SESSION['role'] ?? 'member'));
+$currentDepartment = '';
+
+$stmt = $conn->prepare("SELECT status, profile_picture, department FROM users WHERE user_id = ?");
+$stmt->bind_param("i", $userId);
+$stmt->execute();
+$result = $stmt->get_result();
+$userData = $result->fetch_assoc();
+
+$currentStatus = $userData['status'] ?? 'offline';
+$profilePicture = $userData['profile_picture'] ?? null;
+$currentDepartment = strtolower(trim($userData['department'] ?? ''));
+
+$stmt->close();
+
+if (!$userId) {
+    die("Unauthorized access. Please log in.");
+}
+
+// -------------------------------------------------------
+// 1. ATTENDANCE & STATUS LOGIC
+// -------------------------------------------------------
+
+$today = date('Y-m-d');
+$isWeekend = date('N') >= 6;
+
+if (!$isWeekend) {
+    $stmt = $conn->prepare("
+        SELECT COUNT(*) AS count 
+        FROM user_sessions 
+        WHERE user_id = ? AND session_date = ? AND logout_time IS NULL
+    ");
+    $stmt->bind_param("is", $userId, $today);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $sessionCount = $result->fetch_assoc()['count'];
+    $stmt->close();
+
+    if ($sessionCount == 0) {
+        log_session_start($userId);
+    }
+    update_current_session($userId);
+}
+
+include '../track.php';
+log_activity($userId, "Viewed Dashboard");
+
+$stmt = $conn->prepare("SELECT status, profile_picture FROM users WHERE user_id = ?");
+$stmt->bind_param("i", $userId);
+$stmt->execute();
+$result = $stmt->get_result();
+$userData = $result->fetch_assoc();
+$currentStatus = $userData['status'] ?? 'offline';
+$profilePicture = $userData['profile_picture'] ?? null;
+$stmt->close();
+
+$statusUpdated = false;
+if ($currentStatus === 'offline') {
+    $stmt = $conn->prepare("UPDATE users SET status = 'online' WHERE user_id = ?");
+    $stmt->bind_param("i", $userId);
+    $stmt->execute();
+    $currentStatus = 'online';
+    $statusUpdated = true;
+    $stmt->close();
+}
+
+// -------------------------------------------------------
+// 2. DAILY REPORT + SESSION MINUTES
+// -------------------------------------------------------
+
+$canSubmitReport = false;
+$totalMinutesToday = 0;
+
+if (!$isWeekend) {
+    $stmt = $conn->prepare("
+        SELECT SUM(minutes) as total_minutes
+        FROM user_sessions
+        WHERE user_id = ? AND session_date = ?
+    ");
+    $stmt->bind_param("is", $userId, $today);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+    $totalMinutesToday = (int)($row['total_minutes'] ?? 0);
+    $stmt->close();
+
+   // $canSubmitReport = $totalMinutesToday >= 60;
+   $nowHour = (int)date('G');
+$nowMin  = (int)date('i');
+ $inWindow = ($nowHour === 16) || ($nowHour === 17 && $nowMin === 0);
+$canSubmitReport = $inWindow && ($totalMinutesToday >= 240);
+}
+
+// ========== NOTIFICATIONS (UPDATED) ==========
+$notifications = [];
+$totalNotifications = 0;
+
+// 1. Unread messages
+$stmt = $conn->prepare("SELECT COUNT(*) FROM messages WHERE receiver_id = ? AND is_read = 0");
+$stmt->bind_param("i", $userId);
+$stmt->execute();
+$stmt->bind_result($msgCount);
+$stmt->fetch();
+$stmt->close();
+
+if ($msgCount > 0) {
+    $totalNotifications += $msgCount;
+    $notifications[] = [
+        'icon' => 'fas fa-envelope',
+        'text' => "<strong>$msgCount</strong> unread message" . ($msgCount > 1 ? 's' : ''),
+        'link' => 'member_messages.php',
+        'type' => 'message'
+    ];
+}
+
+// 2. Overdue tasks – query kept for summary, but notification removed
+$fiveDaysAgo = date('Y-m-d', strtotime('-5 days'));
+$stmt = $conn->prepare("
+    SELECT COUNT(*) as overdue_count
+    FROM tasks 
+    WHERE assignTo = ? 
+      AND LOWER(status) = 'in progress'
+      AND dueDate < ?
+      AND dueDate IS NOT NULL
+      AND dueDate != '0000-00-00'
+");
+$stmt->bind_param("ss", $userName, $fiveDaysAgo);
+$stmt->execute();
+$stmt->bind_result($overdueCount);
+$stmt->fetch();
+$stmt->close();
+
+// ❌ Overdue notification REMOVED – no longer added to $notifications or $totalNotifications
+
+// 3. Tasks due today
+$stmt = $conn->prepare("
+    SELECT COUNT(*) as due_today_count
+    FROM tasks 
+    WHERE assignTo = ? 
+      AND LOWER(status) = 'in progress'
+      AND dueDate = ?
+");
+$stmt->bind_param("ss", $userName, $today);
+$stmt->execute();
+$stmt->bind_result($dueTodayCount);
+$stmt->fetch();
+$stmt->close();
+
+if ($dueTodayCount > 0) {
+    $totalNotifications += $dueTodayCount;
+    $notifications[] = [
+        'icon' => 'fas fa-bell',
+        'text' => "<strong>$dueTodayCount</strong> task" . ($dueTodayCount > 1 ? 's' : '') . " due <span style='color:#f4a261;font-weight:700;'>TODAY</span>",
+        'link' => 'member_tasks.php',
+        'type' => 'due_today'
+    ];
+}
+
+// 4. Tasks in review
+$stmt = $conn->prepare("
+    SELECT COUNT(*) 
+    FROM tasks 
+    WHERE assignTo = ? AND LOWER(status) = 'in review'
+");
+$stmt->bind_param("s", $userName);
+$stmt->execute();
+$stmt->bind_result($reviewCount);
+$stmt->fetch();
+$stmt->close();
+
+if ($reviewCount > 0) {
+    $totalNotifications += $reviewCount;
+    $notifications[] = [
+        'icon' => 'fas fa-hourglass-half',
+        'text' => "<strong>$reviewCount</strong> task" . ($reviewCount > 1 ? 's' : '') . " awaiting approval",
+        'link' => 'member_tasks.php',
+        'type' => 'review'
+    ];
+}
+
+// 5. Daily report submitted check (unchanged)
+$reportSubmitted = false;
+$stmt = $conn->prepare("SELECT task FROM daily_tasks WHERE user_id = ? AND sent_date = ?");
+$stmt->bind_param("is", $userId, $today);
+$stmt->execute();
+$result = $stmt->get_result();
+if ($result->num_rows > 0) {
+    $reportSubmitted = true;
+}
+$stmt->close();
+
+// Daily summary data – still includes overdue count (if you want to display it elsewhere)
+$dailySummaryData = [
+    'overdue' => $overdueCount,
+    'dueToday' => $dueTodayCount,
+    'unreadMsg' => $msgCount,
+    'reportSubmitted' => $reportSubmitted,
+    'inReview' => $reviewCount
+];
+
+$dailySummaryKey = 'daily_summary_shown_' . $userId;
+$showDailySummary = ($_SESSION[$dailySummaryKey] ?? '') !== $today;
+if ($showDailySummary) {
+    $_SESSION[$dailySummaryKey] = $today;
+}
+// -------------------------------------------------------
+// 4. TASK STATS
+// -------------------------------------------------------
+
+$stmt = $conn->prepare("SELECT status, COUNT(*) as count FROM tasks WHERE assignTo = ? GROUP BY status");
+$stmt->bind_param("s", $userName);
+$stmt->execute();
+$result = $stmt->get_result();
+
+$completedTasks = 0;
+$inReviewTasks = 0; 
+$activeTasks = 0;
+
+while ($row = $result->fetch_assoc()) {
+    $statusClean = strtolower(trim($row['status']));
+    if ($statusClean === 'completed') {
+        $completedTasks = $row['count'];
+    } elseif ($statusClean === 'in review') {
+        $inReviewTasks = $row['count'];
+    } else {
+        $activeTasks += $row['count'];
+    }
+}
+$assignedTasks = $completedTasks + $inReviewTasks + $activeTasks;
+$stmt->close();
+
+$projStmt = $conn->prepare("
+    SELECT COUNT(DISTINCT p.project_id) AS numProjects
+    FROM projects_x p
+    JOIN tasks t ON t.project_id = p.project_id
+    WHERE t.assignTo = ?
+");
+$projStmt->bind_param("s", $userName);
+$projStmt->execute();
+$projResult = $projStmt->get_result()->fetch_assoc();
+$numProjects = (int)$projResult['numProjects'];
+$projStmt->close();
+
+$firstDayOfMonth = date('Y-m-01');
+$lastDayOfMonth = date('Y-m-t');
+$stmt = $conn->prepare("
+    SELECT session_date, SUM(minutes) as total_minutes
+    FROM user_sessions
+    WHERE user_id = ? AND session_date BETWEEN ? AND ?
+    GROUP BY session_date
+");
+$stmt->bind_param("iss", $userId, $firstDayOfMonth, $lastDayOfMonth);
+$stmt->execute();
+$result = $stmt->get_result();
+$loginDays = 0;
+$totalMinutes = 0;
+while ($row = $result->fetch_assoc()) {
+    $loginDays++;
+    $totalMinutes += min($row['total_minutes'], 540); 
+}
+$totalHours = round($totalMinutes / 60, 1);
+$stmt->close();
+
+$status_info = [
+    'online' => ['name' => 'Online', 'color' => 'status-online'],
+    'out_of_office' => ['name' => 'Out of Office', 'color' => 'status-out_of_office'],
+    'sick' => ['name' => 'Sick', 'color' => 'status-sick'],
+    'focusing' => ['name' => 'Focusing', 'color' => 'status-focusing'],
+    'in_meeting' => ['name' => 'In Meeting', 'color' => 'status-in_meeting'],
+    'offline' => ['name' => 'Offline', 'color' => 'status-offline']
+];
+
+// -------------------------------------------------------
+// 5. WEEKLY PERFORMANCE DATA (real data, no demo)
+// -------------------------------------------------------
+
+$weekStart = date('Y-m-d', strtotime('monday this week'));
+
+$hoursStmt = $conn->prepare("
+    SELECT COALESCE(SUM(minutes), 0) AS total_minutes,
+           COUNT(DISTINCT session_date) AS days_logged
+    FROM user_sessions
+    WHERE user_id = ? AND session_date BETWEEN ? AND ?
+");
+$hoursStmt->bind_param("iss", $userId, $weekStart, $today);
+$hoursStmt->execute();
+$hoursData = $hoursStmt->get_result()->fetch_assoc();
+$hoursStmt->close();
+
+$totalMinutesWeek = (int)($hoursData['total_minutes'] ?? 0);
+$hoursLogged      = round($totalMinutesWeek / 60, 1);
+
+$reportsStmt = $conn->prepare("
+    SELECT COUNT(*) AS total FROM daily_tasks
+    WHERE user_id = ? AND sent_date BETWEEN ? AND ?
+");
+$reportsStmt->bind_param("iss", $userId, $weekStart, $today);
+$reportsStmt->execute();
+$reportsCount = (int)($reportsStmt->get_result()->fetch_assoc()['total'] ?? 0);
+$reportsStmt->close();
+
+$dayOfWeek       = (int)date('N');
+$workDaysElapsed = min($dayOfWeek, 5);
+$requiredHours   = $workDaysElapsed * 4;
+$requiredMinutes = $workDaysElapsed * 240;
+$hoursPercent    = $requiredMinutes > 0 ? min(100, round(($totalMinutesWeek / $requiredMinutes) * 100)) : 0;
+$reportsPercent  = $workDaysElapsed > 0 ? min(100, round(($reportsCount / $workDaysElapsed) * 100)) : 0;
+
+$leadersStmt = $conn->prepare("
+    SELECT DISTINCT u.name, u.profile_picture
+    FROM tasks t
+    JOIN users u ON u.user_id = t.created_by
+    WHERE t.assignTo = ? AND LOWER(u.role) = 'leader'
+    LIMIT 3
+");
+$leadersStmt->bind_param("s", $userName);
+$leadersStmt->execute();
+$myLeaders = $leadersStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$leadersStmt->close();
+
+
+
+
+//------------------------------
+// HERE WE CHECK THE BREAK TIME CONDITION 
+//------------------------
+
+// Check if user is currently in a break cooldown
+// We store break_end time in a DB table: member_breaks (user_id, break_start, break_end)
+// Check if they have an active or recent break
+$breakStatus = 'available'; // 'active', 'cooldown', 'available'
+$breakSecondsLeft = 0;
+$cooldownSecondsLeft = 0;
+ 
+$breakStmt = $conn->prepare("
+    SELECT break_start, break_end, 
+           TIMESTAMPDIFF(SECOND, NOW(), break_end) as secs_to_end,
+           TIMESTAMPDIFF(MINUTE, break_end, NOW()) as mins_since_end
+    FROM member_breaks 
+    WHERE user_id = ? 
+    ORDER BY break_start DESC 
+    LIMIT 1
+");
+$breakStmt->bind_param("i", $userId);
+$breakStmt->execute();
+$breakRow = $breakStmt->get_result()->fetch_assoc();
+$breakStmt->close();
+
+
+ if ($breakRow) {
+    $secsToEnd    = (int)$breakRow['secs_to_end'];
+    $minsSinceEnd = (int)$breakRow['mins_since_end'];
+
+    if ($secsToEnd > 0) {
+        $breakStatus      = 'active';
+        $breakSecondsLeft = $secsToEnd;
+    } elseif ($minsSinceEnd < 60) {
+        // even if minsSinceEnd = 0, cooldown still applies
+        $breakStatus          = 'cooldown';
+        $cooldownSecondsLeft  = max(0, (60 - $minsSinceEnd) * 60);
+        // If literally just ended (0 mins), give full 60min cooldown
+        if ($cooldownSecondsLeft === 0) $cooldownSecondsLeft = 3600;
+    }
+}
+
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Member Dashboard - Tidy Track</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="theme.css">
+    <style>
+        :root { 
+            --accent: #1d3557; 
+            --bubble-me: #d9fdd3; 
+            --bubble-them: #ffffff; 
+            --bg: #eef2f5; 
+        }
+        * { box-sizing: border-box; }
+        body { 
+            font-family: 'Poppins', sans-serif; 
+            margin: 0; 
+            background: var(--bg); 
+            display: flex; 
+            min-height: 100vh; 
+        }
+        .sidebar { 
+            width: 320px; 
+            background: #fff; 
+            border-right: 1px solid #e0e0e0; 
+            display: flex; 
+            flex-direction: column; 
+            padding: 18px; 
+            position: fixed; 
+            height: 100vh; 
+            overflow-y: auto; 
+        }
+        .sidebar .top { 
+            padding-bottom: 18px; 
+            border-bottom: 1px solid #eee; 
+            display: flex; 
+            align-items: center; 
+            gap: 12px; 
+        }
+        .sidebar .top .me { 
+            width: 44px; 
+            height: 44px; 
+            border-radius: 50%; 
+            background: var(--accent); 
+            color: #fff; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-weight: 700; 
+            position: relative; 
+            transition: transform 0.3s ease; 
+        }
+        .sidebar .top .me:hover { transform: scale(1.1); }
+        .sidebar .top .me img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+        .status-indicator { position: absolute; bottom: 0; right: 0; width: 10px; height: 10px; border-radius: 50%; border: 2px solid white; }
+        .status-ready { background-color: #00d4aa; box-shadow: 0 0 15px rgba(0,212,170,0.4); }
+        .status-out_of_office { background-color: #ffa726; box-shadow: 0 0 15px rgba(255,167,38,0.4); }
+        .status-sick { background-color: #e94560; box-shadow: 0 0 15px rgba(233,69,96,0.4); }
+        .status-focusing { background-color: #9c27b0; box-shadow: 0 0 15px rgba(156,39,176,0.4); }
+        .status-in_meeting { background-color: #2196f3; box-shadow: 0 0 15px rgba(33,150,243,0.4); }
+        .status-offline { background-color: #cccccc; box-shadow: 0 0 15px rgba(204,204,204,0.4); }
+        .profile-popup {
+            display: none; position: absolute; top: 60px; left: 50%; transform: translateX(-50%);
+            background: white; padding: 1rem; border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 1000; text-align: center; width: 200px;
+        }
+        /* ── SIDEBAR ── */
+.sidebar {
+    width: 260px;
+    background: #fff;
+    border-right: 1px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    padding: 18px;
+    position: fixed;
+    height: 100vh;
+    overflow-y: auto;
+    z-index: 100;
+}
+.sidebar .top {
+    padding-bottom: 16px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.sb-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 15px;
+    position: relative;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+.sb-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.sb-avatar .dot {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+}
+.dot-online { background: #10b981; }
+.dot-offline { background: #9ca3af; }
+.dot-sick { background: #ef4444; }
+.dot-focusing { background: #8b5cf6; }
+.dot-in_meeting { background: #3b82f6; }
+.dot-out_of_office { background: #f59e0b; }
+.dot-ready { background: #10b981; }
+
+.sb-name { font-weight: 700; font-size: 14px; color: #0f172a; }
+.sb-role { font-size: 11px; color: #64748b; }
+
+.sidebar ul {
+    list-style: none;
+    margin-top: 16px;
+    padding: 0;
+}
+.sidebar ul li {
+    margin-bottom: 4px;
+}
+.sidebar ul li a {
+    color: #64748b;
+    text-decoration: none;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: 10px;
+    transition: all .15s;
+    font-weight: 500;
+}
+.sidebar ul li a:hover,
+.sidebar ul li a.active {
+    background: #f1f5f9;
+    color: var(--accent);
+}
+.sidebar ul li a i {
+    width: 16px;
+    text-align: center;
+}
+       .dashboard-container { flex: 1; margin-left: 260px; padding: 20px; overflow: auto; }
+        .time-calendar { display: flex; align-items: center; gap: 12px; font-size: 14px; color: #666; margin-bottom: 20px; }
+        .time-calendar i { color: var(--accent); }
+        .calendar-modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); justify-content: center; align-items: center; }
+        .calendar-content { background-color: #fefefe; padding: 25px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); max-width: 900px; width: 90%; max-height: 90vh; overflow-y: hidden; display: flex; flex-direction: column; }
+        .close-btn { color: #aaa; align-self: flex-end; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close-btn:hover { color: black; }
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; font-size: 1.2rem; font-weight: bold; flex-shrink: 0; }
+        .calendar-weekdays, .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-weight: 500; }
+        .calendar-weekdays { background-color: var(--accent); color: white; padding: 10px 0; position: sticky; top: 0; z-index: 1; }
+        .calendar-grid { background-color: #fff; border: 1px solid #eee; }
+        .calendar-grid .day { padding: 15px 5px; border: 1px solid #f0f0f0; cursor: pointer; position: relative; min-height: 80px; text-align: left; display: flex; flex-direction: column; }
+        .calendar-grid .day.is-today { background-color: #e6f3ff; border-color: #1d3557; }
+        .calendar-grid .day.has-task { background-color: #d9fdd3; }
+        .calendar-grid .day:hover { background-color: #f6fbf6; }
+        .calendar-grid .day-number { font-weight: bold; padding: 5px; color: #555; }
+        .task-popup { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); justify-content: center; align-items: center; }
+        .task-popup-content { background-color: #fefefe; margin: auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 500px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+        .task-popup-content h3 { margin-top: 0; }
+        .day.priority-urgent { background-color: #ffcccc; border: 2px solid #ff0000; }
+        .day.priority-high { background-color: #ffe0cc; border: 2px solid #ffa500; }
+        .day.priority-normal { background-color: #ccf2ff; border: 2px solid #00aaff; }
+        .day.priority-low { background-color: #ccffcc; border: 2px solid #00cc00; }
+        .task-popup-content ul { list-style: none; padding: 0; }
+        .task-popup-content li { padding: 10px; margin-bottom: 5px; border-radius: 5px; background-color: #f0f0f0; }
+        .task-popup-content li.completed { text-decoration: line-through; color: #888; background-color: #e0e0e0; }
+        .task-details { flex-shrink: 0; margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; max-height: 250px; overflow-y: auto; }
+        .task-details h3 { margin-bottom: 10px; font-size: 1.1rem; }
+        .task-details ul { list-style-type: none; padding: 0; }
+        .task-details li { background-color: #f6fbf6; padding: 10px; border-radius: 5px; margin-bottom: 5px; border-left: 3px solid var(--accent); }
+        .task-details li.completed { border-left-color: #2a9d8f; }
+        .dashboard-welcome { font-size: 24px; font-weight: 600; color: #333; margin-bottom: 20px; }
+        .dashboard-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 20px; }
+        .stat-card { background: #fff; padding: 16px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: transform 0.3s; }
+        .stat-card:hover { transform: scale(1.03); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .stat-card h4 { font-size: 16px; color: #333; margin-bottom: 8px; }
+        .stat-card p { font-size: 20px; font-weight: 600; color: var(--accent); }
+        .stat-card ul { list-style: none; margin-top: 12px; }
+        .stat-card ul li { font-size: 14px; color: #666; margin-bottom: 8px; }
+        .stat-card ul li strong { color: #333; }
+        .status-notification { background: #e6f3ff; color: #1d3557; padding: 12px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+        .status-notification i { color: #00d4aa; }
+        .status-notification a { color: var(--accent); text-decoration: underline; }
+        .notification-popup { display: none; position: fixed; z-index: 3000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
+        .notification-popup-content { background-color: #fff; padding: 20px; border-radius: 10px; max-width: 500px; width: 80%; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        .notification-popup-content h3 { margin-top: 0; color: #1d3557; }
+        .notification-popup-content ul { list-style: none; padding: 0; max-height: 300px; overflow-y: auto; }
+        .notification-popup-content li { padding: 10px; margin-bottom: 5px; border-radius: 5px; }
+        .notification-today { background-color: #ffcccc; border-left: 4px solid #ff0000; }
+        .notification-tomorrow { background-color: #ffe0cc; border-left: 4px solid #ffa500; }
+        .notification-soon { background-color: #fff3cd; border-left: 4px solid #ffca28; }
+        .reminder-popup { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); justify-content: center; align-items: center; }
+        .reminder-popup-content { background-color: #fefefe; margin: auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 500px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+        .reminder-popup-content select, .reminder-popup-content input { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        .reminder-popup-content button { background-color: var(--accent); color: white; padding: 10px; border: none; border-radius: 5px; cursor: pointer; }
+        .reminder-popup-content button:hover { background-color: #162a44; }
+
+/* ===================== MOBILE ===================== */
+.menu-toggle {
+    display: none;
+    position: fixed;
+    top: 15px;
+    left: 15px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 10px;
+    font-size: 20px;
+    z-index: 2000;
+    cursor: pointer;
+}
+
+/* Tablet */
+@media (max-width: 1024px) {
+    .sidebar { width: 250px; }
+    .dashboard-container { margin-left: 250px; padding: 15px; }
+    .dashboard-welcome { font-size: 22px; }
+    .notification-bell { top: 15px; right: 15px; width: 44px; height: 44px; font-size: 20px; }
+    .notif-dropdown { width: 300px; right: 15px; }
+}
+
+/* Mobile phones */
+@media (max-width: 768px) {
+    body { flex-direction: column; }
+    .menu-toggle { display: block; }
+
+    .sidebar {
+        position: fixed;
+        left: -100%;
+        top: 0;
+        height: 100%;
+        width: 260px;
+        max-width: 85vw;
+        box-shadow: 0 0 15px rgba(0,0,0,0.25);
+        z-index: 1500;
+        transition: left 0.3s ease;
+    }
+    .sidebar.open { left: 0; }
+
+    .dashboard-container {
+        margin-left: 0;
+        padding: 70px 12px 20px;
+    }
+
+    .dashboard-stats {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    .stat-card {
+        padding: 12px 14px !important;
+        border-radius: 10px;
+        font-size: 14px;
+    }
+    .stat-card h4 {
+        font-size: 13px !important;
+        margin-bottom: 6px !important;
+    }
+    .stat-card p {
+        font-size: 16px !important;
+        margin: 4px 0 !important;
+    }
+    .stat-card .sz-value,
+    .stat-card strong {
+        font-size: 16px !important;
+    }
+
+    /* Recent Tasks card */
+    .stat-card[style*="grid-column"] {
+        grid-column: span 1 !important;
+    }
+    .stat-card[style*="padding:24px"] {
+        padding: 16px !important;
+    }
+    .stat-card[style*="padding:24px"] h4 {
+        font-size: 15px !important;
+        margin-bottom: 14px !important;
+    }
+
+    .dashboard-welcome {
+        font-size: 20px;
+        margin-top: 10px;
+    }
+
+    .time-calendar {
+        flex-wrap: wrap;
+        gap: 10px;
+        font-size: 13px;
+        justify-content: center;
+    }
+
+    /* Notification bell & dropdown */
+    .notification-bell {
+        top: 15px;
+        right: 15px;
+        width: 42px;
+        height: 42px;
+        font-size: 18px;
+        z-index: 2001;
+    }
+    .notif-dropdown {
+        top: 65px;
+        right: 10px;
+        left: 10px;
+        width: auto;
+        max-width: none;
+    }
+
+    /* Chart / Graph */
+    #taskProgressChart,
+    .stat-card canvas {
+        max-width: 130px !important;
+        max-height: 130px !important;
+        width: 130px !important;
+        height: 130px !important;
+        margin: 0 auto;
+        display: block;
+    }
+
+    /* Performance card */
+    .perf-metric-top {
+        font-size: 11px !important;
+    }
+    .perf-metric-val {
+        font-size: 12px !important;
+    }
+    .perf-bar-note {
+        font-size: 9px !important;
+    }
+    .perf-meeting-chip {
+        padding: 6px !important;
+        font-size: 0.9rem;
+    }
+    .chip-label {
+        font-size: 10px !important;
+    }
+    .chip-status {
+        font-size: 9px !important;
+    }
+    .perf-leader-name {
+        font-size: 12px !important;
+    }
+    .perf-leader-avatar {
+        width: 24px !important;
+        height: 24px !important;
+        font-size: 11px !important;
+    }
+    .perf-meetings-row {
+        flex-direction: column;
+    }
+
+    /* Icons in cards */
+    .stat-card i,
+    .stat-card span[style*="font-size:22px"],
+    .stat-card span[style*="font-size:24px"] {
+        font-size: 18px !important;
+    }
+
+    /* Small text in cards */
+    .stat-card div[style*="font-size:12px"] {
+        font-size: 11px !important;
+    }
+
+    /* Modals */
+    .calendar-content,
+    .task-popup-content,
+    .notification-popup-content,
+    .reminder-popup-content {
+        width: 95% !important;
+        max-width: 95% !important;
+        margin: 10px;
+        max-height: 90vh;
+    }
+    .calendar-grid .day {
+        min-height: 55px;
+        padding: 8px 3px;
+        font-size: 13px;
+    }
+    .daily-card {
+        width: 94%;
+        max-width: 94%;
+    }
+}
+
+/* Small phones */
+@media (max-width: 480px) {
+    .dashboard-welcome {
+        font-size: 17px !important;
+        text-align: center;
+    }
+    .stat-card {
+        padding: 10px 12px !important;
+    }
+    .stat-card h4 {
+        font-size: 12px !important;
+    }
+    .stat-card p {
+        font-size: 15px !important;
+    }
+    .sidebar ul li a {
+        font-size: 14px;
+        gap: 8px;
+        padding: 9px 10px;
+    }
+    .notification-bell {
+        width: 38px;
+        height: 38px;
+        font-size: 16px;
+    }
+    .time-calendar {
+        font-size: 12px;
+    }
+    #taskProgressChart,
+    .stat-card canvas {
+        max-width: 110px !important;
+        max-height: 110px !important;
+        width: 110px !important;
+        height: 110px !important;
+    }
+}
+        /* Notification bell */
+        .notification-bell { position: fixed; top: 20px; right: 20px; width: 50px; height: 50px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; color: #4361ee; box-shadow: 0 8px 25px rgba(0,0,0,0.15); cursor: pointer; z-index: 9997; transition: all 0.3s; }
+        .notification-bell:hover { transform: scale(1.1); }
+        .notif-badge { position: absolute; top: 8px; right: 8px; background: #e74c3c; color: white; font-size: 11px; font-weight: bold; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; animation: pulse 2s infinite; }
+        .notif-dropdown { position: fixed; top: 80px; right: 20px; width: 340px; max-height: 500px; background: white; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.2); z-index: 9996; overflow: hidden; display: none; border: 1px solid #eee; }
+        .notif-dropdown.show { display: block; }
+        .notif-header { padding: 16px; background: #4361ee; color: white; font-size: 16px; display: flex; justify-content: space-between; align-items: center; }
+        #notifList { max-height: 400px; overflow-y: auto; padding: 8px; }
+        .notif-item { padding: 14px 16px; border-bottom: 1px solid #f0f0f0; font-size: 14px; cursor: pointer; transition: background 0.2s; }
+        .notif-item:hover { background: #f8fbff; }
+        .notif-item i { color: #4361ee; }
+        .notif-empty { text-align: center; padding: 30px; color: #777; font-style: italic; }
+
+        /* Daily summary popup */
+        .daily-popup { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 99999; display: flex; align-items: center; justify-content: center; animation: fadeIn 0.5s; }
+        .daily-card { background: white; width: 90%; max-width: 420px; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: popUp 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .daily-header { background: linear-gradient(135deg, #4361ee, #3f37c9); color: white; padding: 20px; font-size: 20px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+        .daily-close { background: none; border: none; color: white; font-size: 28px; cursor: pointer; }
+        .daily-body { padding: 24px; font-size: 16px; line-height: 1.6; color: #333; }
+        .daily-footer { padding: 0 24px 20px; text-align: right; color: #777; font-size: 13px; }
+        @keyframes fadeIn { from {opacity:0} to {opacity:1} }
+        @keyframes popUp { from {transform:scale(0.3)} to {transform:scale(1)} }
+
+        /* ── ShareZone card — matches stat-card exactly ── */
+        .sharezone-card-link { text-decoration: none; display: block; }
+        .sharezone-stat-card {
+            background: var(--accent);
+            padding: 16px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            transition: transform 0.3s, box-shadow 0.2s;
+            cursor: pointer;
+            color: white;
+        }
+        .sharezone-stat-card:hover { transform: scale(1.03); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .sharezone-stat-card h4 { font-size: 16px; color: rgba(255,255,255,0.85); margin-bottom: 8px; }
+        .sharezone-stat-card .sz-main { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+        .sharezone-stat-card .sz-emoji { font-size: 1.6rem; }
+        .sharezone-stat-card .sz-value { font-size: 20px; font-weight: 600; color: white; }
+        .sharezone-stat-card .sz-sub { font-size: 12px; color: rgba(255,255,255,0.65); margin-top: 4px; }
+        .sharezone-stat-card .sz-arrow { display: flex; justify-content: flex-end; margin-top: 8px; font-size: 12px; color: rgba(255,255,255,0.75); font-weight: 600; }
+
+        /* ── Performance card — uses CSS vars so dark mode works ── */
+        .perf-stat-card {
+            background: #fff;
+            padding: 16px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            transition: transform 0.3s;
+        }
+        .perf-stat-card:hover { transform: scale(1.03); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .perf-stat-card h4 { font-size: 16px; color: #333; margin-bottom: 12px; }
+
+        /* Progress bars — reuse dashboard accent color */
+        .perf-metric { margin-bottom: 12px; }
+        .perf-metric-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; font-size: 12px; color: #555; font-weight: 600; }
+        .perf-metric-val { font-weight: 700; font-size: 13px; }
+        .val-good { color: #27ae60; }
+        .val-warn { color: #f39c12; }
+        .val-bad  { color: #e94560; }
+        .perf-bar-bg { background: #eef2f5; border-radius: 20px; height: 7px; overflow: hidden; }
+        .perf-bar { height: 100%; border-radius: 20px; transition: width .6s ease; }
+        .bar-good { background: linear-gradient(90deg, #27ae60, #00d4aa); }
+        .bar-warn { background: linear-gradient(90deg, #f39c12, #f8c471); }
+        .bar-bad  { background: linear-gradient(90deg, #e94560, #f1948a); }
+        .perf-bar-note { font-size: 10px; color: #bbb; margin-top: 3px; }
+
+        /* Meeting chips */
+        .perf-meetings-row { display: flex; gap: 8px; margin-top: 10px; margin-bottom: 12px; }
+        .perf-meeting-chip { flex: 1; display: flex; align-items: center; gap: 7px; background: #f6f8fb; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; font-size: 1rem; }
+        .chip-label { font-size: 11px; font-weight: 600; color: #333; }
+        .chip-status { font-size: 10px; color: #aaa; }
+
+        /* Leader section */
+        .perf-leaders-wrap { border-top: 1px solid #eef2f5; padding-top: 10px; margin-top: 4px; }
+        .perf-leaders-label { font-size: 10px; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 7px; }
+        .perf-no-leader { font-size: 12px; color: #bbb; font-style: italic; }
+        .perf-leader-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+        .perf-leader-avatar { width: 28px; height: 28px; border-radius: 8px; background: var(--accent); color: white; font-weight: 700; font-size: 12px; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; }
+        .perf-leader-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .perf-leader-name { font-size: 13px; font-weight: 600; color: #333; }
+    </style>
+</head>
+<body>
+    <button class="menu-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open')">
+        <i class="fas fa-bars"></i>
+    </button>
+
+   <aside class="sidebar">
+    <div class="top">
+        <div class="sb-avatar">
+            <?php if ($profilePicture && file_exists($profilePicture)): ?>
+                <img src="<?php echo htmlspecialchars($profilePicture); ?>" alt="Profile">
+            <?php else: ?>
+                <?php echo htmlspecialchars($userInitial); ?>
+            <?php endif; ?>
+            <div class="dot dot-<?php echo htmlspecialchars($currentStatus); ?>"></div>
+        </div>
+        <div>
+            <div class="sb-name"><?php echo htmlspecialchars($userName); ?></div>
+            <div class="sb-role"><?php echo htmlspecialchars($status_info[$currentStatus]['name'] ?? 'Unknown'); ?> | <?php echo htmlspecialchars($currentRole); ?></div>
+        </div>
+    </div>
+
+    <!-- NOTIFICATION BELL (moved outside .top so it stays fixed) -->
+    <div class="notification-bell" id="notifBell">
+        <i class="fas fa-bell"></i>
+        <span class="notif-badge" id="notifBadge" style="display: <?= $totalNotifications > 0 ? 'flex' : 'none'; ?>"><?= $totalNotifications ?></span>
+    </div>
+
+    <div class="notif-dropdown" id="notifDropdown">
+        <div class="notif-header">
+            <strong>Notifications</strong>
+            <span id="notifCount"><?= $totalNotifications ?></span>
+        </div>
+        <div id="notifList">
+            <?php if ($totalNotifications == 0): ?>
+                <div class='notif-empty'><i class='fas fa-check-circle'></i> No new notifications</div>
+            <?php else: foreach ($notifications as $notif): ?>
+                <div class='notif-item <?= $notif['type'] ?>' onclick="location.href='<?= $notif['link'] ?>'">
+                    <i class='<?= $notif['icon'] ?>'></i> <?= $notif['text'] ?>
+                </div>
+            <?php endforeach; endif; ?>
+        </div>
+    </div>
+
+    <div id="dailySummary" class="daily-popup" style="display:none;">
+        <div class="daily-card">
+            <div class="daily-header">
+                <span id="dailyGreeting"></span>
+                <button onclick="document.getElementById('dailySummary').style.display='none'" class="daily-close">×</button>
+            </div>
+            <div class="daily-body" id="dailySummaryText">Checking your schedule...</div>
+            <div class="daily-footer"><small id="dailyTime"></small></div>
+        </div>
+    </div>
+
+    <ul>
+        <li><a href="member_dashboard.php" class="active"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a></li>
+        <li><a href="member_tasks.php"><i class="fas fa-tasks"></i><span>My Tasks</span></a></li>
+        <li><a href="member_projects.php"><i class="fas fa-briefcase"></i><span>Projects</span></a></li>
+        <li><a href="member_messages.php"><i class="fas fa-comments"></i><span>Messages</span></a></li>
+        <li><a href="upload_timesheet_progress.php"><i class="fas fa-file-signature"></i><span>Timesheet Submissions</span></a></li>
+        <li><a href="member_Group.php"><i class="fas fa-users"></i><span>Groups</span></a></li>
+        <li><a href="member_Group_chat.php"><i class="fas fa-envelope"></i><span>Group Messages</span></a></li>
+        <li><a href="member_attendance.php"><i class="fas fa-check-circle"></i><span>Attendance</span></a></li>
+        <li><a href="leave_application.php"><i class="fa-solid fa-calendar-check"></i><span>Leave Application</span></a></li>
+        <li><a href="https://investhoodprojects.com/tidytracker/tidytrack/meeting/member_meetings.php"><i class="fas fa-video"></i><span>Meetings</span></a></li>
+
+        <?php
+        $isBADept = ($currentDepartment === 'ba team');
+        $isDevDept = in_array($currentDepartment, ['fullstack developer','frontend developer','backend developer']);
+        $isICTDept = ($currentDepartment === 'ict team');
+        ?>
+
+        <?php if ($isBADept): ?>
+            <li><a href="defect_tracker.php"><i class="fa-solid fa-bug"></i><span>Defect Tracker</span></a></li>
+        <?php endif; ?>
+
+        <?php if ($isDevDept): ?>
+            <li><a href="developer_defects.php"><i class="fa-solid fa-bug"></i><span>My Assigned Defects</span></a></li>
+        <?php endif; ?>
+
+        <?php if ($isICTDept): ?>
+            <li><a href="defect_tracker.php"><i class="fa-solid fa-bug"></i><span>Defect Tracker</span></a></li>
+            <li><a href="developer_defects.php"><i class="fa-solid fa-list-check"></i><span>Assigned Defects</span></a></li>
+        <?php endif; ?>
+
+        <li><a href="member_help.php"><i class="fas fa-life-ring"></i><span>TSM ASSISTANCE</span></a></li>
+        <li><a href="logout.php"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a></li>
+        <li style="margin-top:auto;"><a href="profile.php"><i class="fas fa-user-circle"></i><span>Profile Settings</span></a></li>
+    </ul>
+</aside>
+
+    <main class="dashboard-container">
+        <?php if ($statusUpdated): ?>
+            <div class="status-notification">
+                <i class="fas fa-info-circle"></i>
+                Your profile status has been set to "Ready". Update it in <a href="profile.php">Profile Settings</a> if needed.
+            </div>
+        <?php endif; ?>
+
+        <h2 class="dashboard-welcome">Welcome back, <?php echo htmlspecialchars($userName); ?>!</h2>
+
+        <div class="time-calendar">
+            <i class="fas fa-clock reminder-toggle" id="openReminder"></i>
+            <span id="localTime">--:--:--</span>
+            <i class="fas fa-calendar-alt calendar-toggle" id="openCalendar"></i>
+            <i class="fas fa-moon mode-toggle" id="modeToggle" style="cursor:pointer;"></i>
+
+            <!-- Calendar Modal -->
+            <div id="calendarModal" class="calendar-modal">
+                <div class="calendar-content">
+                    <span class="close-btn" id="closeCalendar">&times;</span>
+                    <div id="fullCalendarContainer">
+                        <div class="calendar-header">
+                            <button id="prevMonth">&lt;</button>
+                            <h2 id="currentMonthYear"></h2>
+                            <button id="nextMonth">&gt;</button>
+                        </div>
+                        <div class="calendar-grid-container">
+                            <div class="calendar-weekdays">
+                                <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+                            </div>
+                            <div class="calendar-grid" id="calendarGrid"></div>
+                        </div>
+                    </div>
+                    <div id="taskDetails" class="task-details">
+                        <h3>Tasks for <span id="selectedDateTitle"></span></h3>
+                        <ul id="taskList"></ul>
+                        <p id="noTasksMessage" style="display:none;">No tasks or reminders for this date.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="taskPopup" class="task-popup">
+                <div class="task-popup-content">
+                    <span class="close-btn" id="closeTaskPopup">&times;</span>
+                    <h3 id="taskPopupTitle"></h3>
+                    <ul id="taskPopupList"></ul>
+                    <p id="noTasksPopupMessage" style="display:none;">No tasks or reminders for this date.</p>
+                </div>
+            </div>
+
+            <div id="notificationPopup" class="notification-popup">
+                <div class="notification-popup-content">
+                    <span class="close-btn" id="closeNotification">&times;</span>
+                    <h3>Task Notifications</h3>
+                    <ul id="notificationList"></ul>
+                </div>
+            </div>
+
+            <div id="reminderPopup" class="reminder-popup">
+                <div class="reminder-popup-content">
+                    <span class="close-btn" id="closeReminderPopup">&times;</span>
+                    <h3>Set Reminder</h3>
+                    <form id="setReminderForm">
+                        <select name="task_id" required>
+                            <option value="">Select Task</option>
+                            <?php
+                            $stmt = $conn->prepare("SELECT task_id, taskTitle, dueDate FROM tasks WHERE assignTo = ? AND status != 'completed'");
+                            $stmt->bind_param("s", $userName);
+                            $stmt->execute();
+                            $result = $stmt->get_result();
+                            while ($task = $result->fetch_assoc()) {
+                                echo "<option value='{$task['task_id']}'>" . htmlspecialchars($task['taskTitle']) . " (Due: " . date('M d, Y H:i', strtotime($task['dueDate'])) . ")</option>";
+                            }
+                            $stmt->close();
+                            ?>
+                        </select>
+                        <input type="datetime-local" name="reminderDate" required>
+                        <button type="submit">Set Reminder</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+      <!-- ── STAT CARDS GRID ── -->
+        <div class="dashboard-stats">
+
+            <div class="stat-card">
+                <h4>Total Assigned Tasks</h4>
+                <p><?php echo $assignedTasks; ?> Tasks</p>
+            </div>
+
+            <div class="stat-card">
+                <h4>Completed Tasks</h4>
+                <p><?php echo $completedTasks; ?> Tasks</p>
+            </div>
+
+            <div class="stat-card">
+                <h4>Active Tasks</h4>
+                <p><?php echo $activeTasks; ?> Tasks</p>
+            </div>
+
+            <div class="stat-card">
+                <h4>Tasks In Review</h4>
+                <p><?php echo $inReviewTasks; ?> Tasks</p>
+            </div>
+
+            <div class="stat-card">
+                <h4>Project Involvement</h4>
+                <p><?php echo $numProjects; ?> Projects</p>
+            </div>
+
+            <div class="stat-card">
+                <h4>Monthly Login Days</h4>
+                <p><?php echo $loginDays; ?> Days</p>
+            </div>
+
+            <div class="stat-card">
+                <h4>Hours Logged This Month</h4>
+                <p><?php echo $totalHours; ?> Hours</p>
+            </div>
+
+            <div class="stat-card">
+                <h4>Task Progress</h4>
+                <canvas id="taskProgressChart" width="140" height="140"></canvas>
+            </div>
+
+            <!-- ── Daily Report Card ── -->
+            <?php if ($reportSubmitted): ?>
+                <div class="stat-card" style="background:#ecfdf5;border:1px solid #a7f3d0;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <h4>Daily Report</h4>
+                        <i class="fas fa-check-circle" style="font-size:24px;color:#10b981;"></i>
+                    </div>
+                    <p style="font-size:18px;margin-top:5px;color:#065f46;"><strong>Submitted today!</strong></p>
+                    <div style="font-size:12px;color:#10b981;margin-top:5px;">Thank you — see you tomorrow!</div>
+                </div>
+
+            <?php elseif ($canSubmitReport): ?>
+                <a href="send_daily_report.php" class="stat-card" style="text-decoration:none;color:inherit;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <h4>Daily Report</h4>
+                        <i class="fas fa-paper-plane" style="font-size:24px;color:#4361ee;"></i>
+                    </div>
+                    <p style="font-size:18px;margin-top:5px;"><strong>Send your daily task to your leader.</strong></p>
+                    <div style="font-size:12px;color:#4361ee;margin-top:5px;font-weight:600;">Click to submit now!</div>
+                </a>
+
+            <?php else: ?>
+                <?php
+                $nowHour    = (int)date('G');
+                $nowMin     = (int)date('i');
+            $inWindow   = ($nowHour === 16) || ($nowHour === 17 && $nowMin === 0);
+                $minsNeeded = max(240 - $totalMinutesToday, 0);
+                $hrsNeeded  = floor($minsNeeded / 60);
+                $minRem     = $minsNeeded % 60;
+                ?>
+                <div class="stat-card" style="background:#fef2f2;border:1px solid #fecaca;cursor:not-allowed;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <h4>Daily Report</h4>
+                        <i class="fas fa-lock" style="font-size:24px;color:#ef4444;"></i>
+                    </div>
+                    <?php if (!$inWindow && $totalMinutesToday < 240): ?>
+                        <p style="font-size:15px;margin-top:5px;color:#991b1b;"><strong>Opens 16:00–17:00 · 4hr required</strong></p>
+                        <div style="font-size:12px;color:#b91c1c;margin-top:6px;">
+                            Today: <strong><?= floor($totalMinutesToday/60) ?>h <?= $totalMinutesToday % 60 ?>m</strong>
+                            — need <?= $hrsNeeded > 0 ? $hrsNeeded.'h ' : '' ?><?= $minRem ?>m more.
+                        </div>
+                    <?php elseif (!$inWindow && $totalMinutesToday >= 240): ?>
+                        <p style="font-size:15px;margin-top:5px;color:#991b1b;"><strong>Opens at 16:00 – 17:00 only</strong></p>
+                        <div style="font-size:12px;color:#b91c1c;margin-top:6px;">✅ Attendance met · window opens at <strong>16:00</strong></div>
+                    <?php else: ?>
+                        <p style="font-size:15px;margin-top:5px;color:#991b1b;"><strong>4hr attendance not met</strong></p>
+                        <div style="font-size:12px;color:#b91c1c;margin-top:6px;">
+                            Today: <strong><?= floor($totalMinutesToday/60) ?>h <?= $totalMinutesToday % 60 ?>m</strong>
+                            — still need <?= $hrsNeeded > 0 ? $hrsNeeded.'h ' : '' ?><?= $minRem ?>m.
+                        </div>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
+
+            <!-- ── Monthly Timesheet Card ── -->
+            <a href="member_timesheet.php" class="stat-card" style="text-decoration:none;color:inherit;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <h4>Monthly Timesheet Status</h4>
+                    <i class="fas fa-file-signature" style="font-size:24px;color:#ff4d4d;"></i>
+                </div>
+                <p style="font-size:18px;margin-top:5px;"><strong>View your timesheet for <?php echo date('F Y'); ?>.</strong></p>
+                <div style="font-size:12px;color:#ff4d4d;margin-top:5px;font-weight:600;">Action Required! Click to view.</div>
+            </a>
+
+            <!-- ── Wellness Card ── -->
+            <a href="wellness.php" class="stat-card" style="text-decoration:none;color:inherit;border-left:5px solid #00d4aa;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <h4>Work Wellness & Feedback</h4>
+                    <i class="fas fa-heartbeat" style="font-size:24px;color:#00d4aa;"></i>
+                </div>
+                <p style="font-size:18px;margin-top:5px;"><strong>How are you feeling at Investhood IT?</strong></p>
+                <div style="font-size:12px;color:#00d4aa;margin-top:5px;font-weight:600;">Rate pressure, comfort & environment.</div>
+            </a>
+
+            <!-- ── ShareZone Card ── -->
+            <a href="https://investhoodprojects.com/tidytracker/tidytrack/sharezone/index.php" class="stat-card" style="text-decoration:none;color:inherit;background:var(--accent);border-color:var(--accent);">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <h4 style="color:rgba(255,255,255,0.85);">ShareZone Hub</h4>
+                    <span style="font-size:22px;">🌐</span>
+                </div>
+                <p style="font-size:18px;margin-top:5px;color:#fff;"><strong>Access Hub</strong></p>
+                <div style="font-size:12px;color:rgba(255,255,255,0.65);margin-top:5px;font-weight:600;">
+                    Your creative space on TidyTrack →
+                </div>
+            </a>
+
+            <!-- ── Weekly Performance Card ── -->
+            <div class="stat-card">
+                <h4 style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+                    <span>📊</span> My Performance
+                    <span style="font-size:11px;color:#aaa;font-weight:400;margin-left:auto;">
+                        Week of <?php echo date('M j', strtotime($weekStart)); ?>
+                    </span>
+                </h4>
+
+                <!-- Hours -->
+                <div class="perf-metric">
+                    <div class="perf-metric-top">
+                        <span>⏱️ Hours Logged</span>
+                        <span class="perf-metric-val <?php echo $hoursPercent >= 100 ? 'val-good' : ($hoursPercent >= 60 ? 'val-warn' : 'val-bad'); ?>">
+                            <?php echo $hoursLogged; ?>h / <?php echo $requiredHours; ?>h
+                        </span>
+                    </div>
+                    <div class="perf-bar-bg">
+                        <div class="perf-bar <?php echo $hoursPercent >= 100 ? 'bar-good' : ($hoursPercent >= 60 ? 'bar-warn' : 'bar-bad'); ?>" style="width:<?php echo $hoursPercent; ?>%"></div>
+                    </div>
+                    <div class="perf-bar-note">4h/day required · <?php echo $workDaysElapsed; ?> work day<?php echo $workDaysElapsed != 1 ? 's' : ''; ?> elapsed</div>
+                </div>
+
+                <!-- Daily Reports -->
+                <div class="perf-metric">
+                    <div class="perf-metric-top">
+                        <span>📝 Daily Reports</span>
+                        <span class="perf-metric-val <?php echo $reportsPercent >= 100 ? 'val-good' : ($reportsPercent >= 60 ? 'val-warn' : 'val-bad'); ?>">
+                            <?php echo $reportsCount; ?> / <?php echo $workDaysElapsed; ?>
+                        </span>
+                    </div>
+                    <div class="perf-bar-bg">
+                        <div class="perf-bar <?php echo $reportsPercent >= 100 ? 'bar-good' : ($reportsPercent >= 60 ? 'bar-warn' : 'bar-bad'); ?>" style="width:<?php echo $reportsPercent; ?>%"></div>
+                    </div>
+                    <div class="perf-bar-note">Daily submission required</div>
+                </div>
+
+                <!-- Meetings -->
+                <div class="perf-meetings-row">
+                    <div class="perf-meeting-chip">
+                        <span>🤝</span>
+                        <div>
+                            <div class="chip-label">Team Collab</div>
+                            <div class="chip-status">Coming soon</div>
+                        </div>
+                    </div>
+                    <div class="perf-meeting-chip">
+                        <span>🎤</span>
+                        <div>
+                            <div class="chip-label">Presentation</div>
+                            <div class="chip-status">Coming soon</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Leaders -->
+                <div class="perf-leaders-wrap">
+                    <div class="perf-leaders-label">👤 My Leader<?php echo count($myLeaders) > 1 ? 's' : ''; ?></div>
+                    <?php if (empty($myLeaders)): ?>
+                        <div class="perf-no-leader">No leader assigned yet.</div>
+                    <?php else: foreach ($myLeaders as $ldr): ?>
+                        <div class="perf-leader-row">
+                            <div class="perf-leader-avatar">
+                                <?php if (!empty($ldr['profile_picture']) && file_exists($ldr['profile_picture'])): ?>
+                                    <img src="<?php echo htmlspecialchars($ldr['profile_picture']); ?>" alt="">
+                                <?php else: ?>
+                                    <?php echo strtoupper($ldr['name'][0]); ?>
+                                <?php endif; ?>
+                            </div>
+                            <span class="perf-leader-name"><?php echo htmlspecialchars($ldr['name']); ?></span>
+                        </div>
+                    <?php endforeach; endif; ?>
+                </div>
+            </div>
+
+            <!-- ── Break Room Card ── -->
+            <style>
+            @keyframes breakPulse {
+                0%,100% { box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+                50%      { box-shadow: 0 4px 18px rgba(34,197,94,0.22); }
+            }
+            @keyframes coffeeBob {
+                0%,100% { transform: translateY(0); }
+                50%      { transform: translateY(-3px); }
+            }
+            </style>
+
+            <?php if ($breakStatus === 'active'): ?>
+                <div class="stat-card" style="background:linear-gradient(135deg,#052e16,#064e3b);border:1px solid #10b981;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <h4 style="color:#6ee7b7;">Break Room</h4>
+                        <span style="font-size:22px;display:inline-block;animation:coffeeBob 1.5s ease-in-out infinite;">☕</span>
+                    </div>
+                    <p style="font-size:18px;margin-top:5px;color:#34d399;"><strong>Break in progress</strong></p>
+                    <div style="font-size:12px;color:#6ee7b7;margin-top:5px;">Session still running ✓</div>
+                </div>
+
+            <?php elseif ($breakStatus === 'cooldown'): ?>
+                <?php $coolMins = max(1, (int)ceil($cooldownSecondsLeft / 60)); ?>
+                <div class="stat-card">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <h4>Break Room</h4>
+                        <span style="font-size:22px;">🚫</span>
+                    </div>
+                    <p style="font-size:18px;margin-top:5px;color:var(--accent);"><strong>~<?= $coolMins ?> min cooldown</strong></p>
+                    <div style="font-size:12px;color:#999;margin-top:5px;">Back to work! Come back later.</div>
+                </div>
+
+            <?php else: ?>
+                <a href="member_break.php" class="stat-card" style="text-decoration:none;color:inherit;animation:breakPulse 3s ease-in-out infinite;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <h4>Break Room</h4>
+                        <span style="font-size:22px;display:inline-block;animation:coffeeBob 2s ease-in-out infinite;">☕</span>
+                    </div>
+                    <p style="font-size:18px;margin-top:5px;color:var(--accent);"><strong>Take a break!</strong></p>
+                    <div style="font-size:12px;color:#999;margin-top:5px;font-weight:600;">15 min · games · quiz →</div>
+                </a>
+            <?php endif; ?>
+
+        </div><!-- end .dashboard-stats -->
+
+        <!-- Recent Tasks -->
+        <div class="stat-card" style="padding:24px; grid-column: span 2;">
+            <h4 style="font-size:18px;margin-bottom:20px;color:#333;font-weight:600;">
+                <i class="fas fa-tasks" style="color:#4361ee;margin-right:8px;"></i>
+                Recent Tasks
+            </h4>
+            <?php
+            $recentStmt = $conn->prepare("
+                SELECT taskTitle, created_at, status, priority, dueDate 
+                FROM tasks 
+                WHERE assignTo = ?
+                  AND NOT (
+                      LOWER(TRIM(status)) IN ('in progress', 'active')
+                      AND dueDate IS NOT NULL
+                      AND dueDate != '0000-00-00'
+                      AND dueDate < DATE_SUB(CURDATE(), INTERVAL 5 DAY)
+                  )
+                ORDER BY created_at DESC 
+                LIMIT 6
+            ");
+            $recentStmt->bind_param("s", $userName);
+            $recentStmt->execute();
+            $recentResult = $recentStmt->get_result();
+
+            if ($recentResult->num_rows === 0) {
+                echo '<div style="text-align:center; padding:40px 0; color:#999; font-size:15px;">
+                        <i class="fas fa-check-circle" style="font-size:3rem; opacity:0.4; margin-bottom:12px; display:block;"></i>
+                        No recent tasks to show – great job staying current!
+                      </div>';
+            } else {
+                while ($task = $recentResult->fetch_assoc()) {
+                    $priority = strtolower($task['priority'] ?? 'normal');
+                    $priorityColor = $priority === 'urgent' ? '#e74c3c' : ($priority === 'high' ? '#e67e22' : ($priority === 'normal' ? '#2ecc71' : '#3498db'));
+                    $priorityBg = $priority === 'urgent' ? '#ffeaea' : ($priority === 'high' ? '#fff4e6' : ($priority === 'normal' ? '#e8f9f0' : '#e3f2fd'));
+                    $daysAgo = floor((time() - strtotime($task['created_at'])) / 86400);
+                    $createdText = $daysAgo == 0 ? "Today" : ($daysAgo == 1 ? "Yesterday" : "$daysAgo days ago");
+                    $dueText = '';
+                    if ($task['dueDate'] && $task['dueDate'] !== '0000-00-00') {
+                        $dueDays = floor((strtotime($task['dueDate']) - time()) / 86400);
+                        $taskStatus = strtolower(trim($task['status'] ?? 'in progress'));
+                        $isInProgress = in_array($taskStatus, ['in progress', 'active', 'inprogress']);
+                        if ($dueDays < 0 && $isInProgress) $dueText = "<span style='color:#e74c3c;font-weight:600;'>Overdue</span>";
+                        elseif ($dueDays < 0) $dueText = "<span style='color:#95a5a6;'>Past Due (Done)</span>";
+                        elseif ($dueDays == 0) $dueText = "<span style='color:#e67e22;font-weight:600;'>Due Today</span>";
+                        elseif ($dueDays == 1) $dueText = "Tomorrow";
+                        else $dueText = "In $dueDays days";
+                    }
+                    $taskStatus = strtolower(trim($task['status'] ?? 'in progress'));
+                    $statusDisplay = ucfirst($taskStatus);
+                    $statusBg = '#fff4e6'; $statusColor = '#e67e22';
+                    if ($taskStatus === 'completed') { $statusBg = '#e8f5e8'; $statusColor = '#27ae60'; $statusDisplay = 'Completed'; }
+                    elseif ($taskStatus === 'in review') { $statusBg = '#f4f0ff'; $statusColor = '#8e44ad'; $statusDisplay = 'In Review'; }
+                    ?>
+                    <div style="padding:14px 0; border-bottom:1px solid #f0f0f0; display:flex; justify-content:space-between; align-items:center;">
+                        <div style="flex:1;">
+                            <div style="font-weight:600; color:#2c3e50; font-size:15px;"><?php echo htmlspecialchars($task['taskTitle']); ?></div>
+                            <div style="font-size:13px; color:#777; margin-top:4px;">
+                                <i class="fas fa-calendar-day" style="margin-right:5px;"></i><?php echo $createdText; ?>
+                                <?php if ($dueText): ?> • <i class="fas fa-clock" style="margin-right:5px;"></i><?php echo $dueText; ?><?php endif; ?>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <span style="padding:5px 12px; border-radius:20px; font-size:11px; font-weight:700; background:<?php echo $priorityBg; ?>; color:<?php echo $priorityColor; ?>;"><?php echo strtoupper($priority); ?></span>
+                            <span style="padding:5px 12px; border-radius:20px; font-size:11px; font-weight:600; background:<?php echo $statusBg; ?>; color:<?php echo $statusColor; ?>;"><?php echo $statusDisplay; ?></span>
+                        </div>
+                    </div>
+                    <?php
+                }
+            }
+            $recentStmt->close();
+            ?>
+            <div style="margin-top:20px; text-align:center;">
+                <a href="member_tasks.php" style="color:#4361ee; font-weight:600; text-decoration:none; font-size:14px;">View All My Tasks →</a>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="theme_switcher.js"></script>
+    <script>
+        const ctx = document.getElementById('taskProgressChart').getContext('2d');
+        const completedTasks = <?php echo $completedTasks; ?>;
+        const inReviewTasks  = <?php echo $inReviewTasks; ?>;
+        const activeTasks    = <?php echo $activeTasks; ?>;
+
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Completed', 'In Review', 'Active'],
+                datasets: [{
+                    data: [completedTasks, inReviewTasks, activeTasks],
+                    backgroundColor: ['#2a9d8f', '#8e44ad', '#f4a261'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                cutout: '70%',
+                plugins: { legend: { display: true, position: 'bottom' } }
+            }
+        });
+
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('localTime').textContent = now.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Africa/Johannesburg' });
+        }
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        const notificationPopup = document.getElementById('notificationPopup');
+        const closeNotification = document.getElementById('closeNotification');
+        const notificationList  = document.getElementById('notificationList');
+
+        function fetchNotifications() {
+            fetch('fetch_notifications.php')
+                .then(r => r.json())
+                .then(data => {
+                    notificationList.innerHTML = '';
+                    if (data.length === 0) {
+                        notificationList.innerHTML = '<li>No upcoming tasks or reminders.</li>';
+                    } else {
+                        data.forEach(task => {
+                            const dateToCheck = task.reminderDate || task.dueDate;
+                            const dueDate  = new Date(dateToCheck).toISOString().slice(0, 10);
+                            const today    = new Date().toISOString().slice(0, 10);
+                            const tomorrow = new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().slice(0, 10);
+                            let cls = dueDate === today ? 'notification-today' : dueDate === tomorrow ? 'notification-tomorrow' : 'notification-soon';
+                            const type = task.reminderDate ? 'Reminder for task due' : 'Due';
+                            const li = document.createElement('li');
+                            li.className = cls;
+                            li.innerHTML = `<strong>${task.taskTitle}</strong><br>${type}: ${new Date(dateToCheck).toLocaleString('en-ZA', { dateStyle: 'medium', timeStyle: 'short' })}<br>Priority: ${task.priority}${task.reminderDate ? `<br>Task Due: ${new Date(task.dueDate).toLocaleString('en-ZA', { dateStyle: 'medium', timeStyle: 'short' })}` : ''}`;
+                            notificationList.appendChild(li);
+                        });
+                    }
+                    if (data.length > 0 && !sessionStorage.getItem('notificationShown')) {
+                        notificationPopup.style.display = 'flex';
+                        sessionStorage.setItem('notificationShown', 'true');
+                    }
+                })
+                .catch(e => console.error('Error fetching notifications:', e));
+        }
+
+        closeNotification.addEventListener('click', () => { notificationPopup.style.display = 'none'; });
+        window.addEventListener('click', e => { if (e.target === notificationPopup) notificationPopup.style.display = 'none'; });
+        fetchNotifications();
+
+        // Calendar
+        const openCalendarBtn   = document.getElementById('openCalendar');
+        const closeCalendarBtn  = document.getElementById('closeCalendar');
+        const calendarModal     = document.getElementById('calendarModal');
+        const prevMonthBtn      = document.getElementById('prevMonth');
+        const nextMonthBtn      = document.getElementById('nextMonth');
+        const calendarGrid      = document.getElementById('calendarGrid');
+        const currentMonthYearHeader = document.getElementById('currentMonthYear');
+        const taskPopup         = document.getElementById('taskPopup');
+        const closeTaskPopupBtn = document.getElementById('closeTaskPopup');
+        const openReminderBtn   = document.getElementById('openReminder');
+        const closeReminderPopupBtn = document.getElementById('closeReminderPopup');
+        const reminderPopup     = document.getElementById('reminderPopup');
+
+        let allTasks = [], currentDate = new Date();
+
+        openCalendarBtn.addEventListener('click', () => { calendarModal.style.display = 'flex'; fetchTasks(); });
+        closeCalendarBtn.addEventListener('click', () => { calendarModal.style.display = 'none'; });
+        closeTaskPopupBtn.addEventListener('click', () => { taskPopup.style.display = 'none'; });
+        openReminderBtn.addEventListener('click', () => { reminderPopup.style.display = 'flex'; });
+        closeReminderPopupBtn.addEventListener('click', () => { reminderPopup.style.display = 'none'; });
+        prevMonthBtn.addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); });
+        nextMonthBtn.addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); });
+
+        window.addEventListener('click', e => {
+            if (e.target === calendarModal) calendarModal.style.display = 'none';
+            if (e.target === taskPopup) taskPopup.style.display = 'none';
+            if (e.target === reminderPopup) reminderPopup.style.display = 'none';
+        });
+
+        function fetchTasks() {
+            fetch('fetch_tasks_for_calendar.php').then(r => r.json()).then(data => { if (!data.error) { allTasks = data; renderCalendar(); } }).catch(e => console.error(e));
+        }
+
+        function renderCalendar() {
+            const year = currentDate.getFullYear(), month = currentDate.getMonth();
+            currentMonthYearHeader.textContent = currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+            const firstDay = new Date(year, month, 1).getDay(), daysInMonth = new Date(year, month + 1, 0).getDate();
+            const today = new Date();
+            calendarGrid.innerHTML = '';
+            for (let i = 0; i < firstDay; i++) { const e = document.createElement('div'); e.classList.add('day','empty'); calendarGrid.appendChild(e); }
+            for (let i = 1; i <= daysInMonth; i++) {
+                const day = document.createElement('div'); day.classList.add('day');
+                const dayDate = new Date(year, month, i);
+                const dayFormatted = dayDate.toISOString().slice(0, 10);
+                const tasksOnDate = allTasks.filter(t => new Date(t.dueDate).toISOString().slice(0,10) === dayFormatted || (t.reminderDate && new Date(t.reminderDate).toISOString().slice(0,10) === dayFormatted));
+                if (tasksOnDate.length > 0) {
+                    const prios = tasksOnDate.map(t => t.priority);
+                    const top = prios.includes('urgent') ? 'urgent' : prios.includes('high') ? 'high' : prios.includes('normal') ? 'normal' : 'low';
+                    day.classList.add(`priority-${top}`, 'has-task');
+                }
+                day.innerHTML = `<span class="day-number">${i}</span>`;
+                if (dayDate.toDateString() === today.toDateString()) day.classList.add('is-today');
+                day.dataset.date = dayFormatted;
+                day.addEventListener('click', () => showTasksInPopup(dayDate, tasksOnDate));
+                calendarGrid.appendChild(day);
+            }
+        }
+
+        function showTasksInPopup(date, tasksForDate) {
+            document.getElementById('taskPopupTitle').textContent = `Tasks for ${date.toLocaleDateString('en-ZA', { weekday:'long', year:'numeric', month:'long', day:'numeric' })}`;
+            const list = document.getElementById('taskPopupList');
+            list.innerHTML = '';
+            if (tasksForDate.length > 0) {
+                tasksForDate.forEach(task => {
+                    const li = document.createElement('li');
+                    const dueTime = task.dueDate.includes('T') ? new Date(task.dueDate).toLocaleTimeString('en-ZA', {hour:'2-digit',minute:'2-digit'}) : 'No time set';
+                    const remTime = task.reminderDate && task.reminderDate.includes('T') ? new Date(task.reminderDate).toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'}) : null;
+                    li.innerHTML = `<strong>${task.taskTitle}</strong><br>Priority: ${task.priority}<br>Due: ${dueTime}${remTime ? `<br>Reminder: ${remTime}` : ''}`;
+                    const st = task.status ? task.status.toLowerCase() : 'active';
+                    if (st === 'completed') li.classList.add('completed');
+                    else if (st === 'in review') li.innerHTML += ' <span style="color:#8e44ad;font-size:12px;">(In Review)</span>';
+                    list.appendChild(li);
+                });
+                document.getElementById('noTasksPopupMessage').style.display = 'none';
+            } else {
+                document.getElementById('noTasksPopupMessage').style.display = 'block';
+            }
+            taskPopup.style.display = 'flex';
+        }
+
+        document.getElementById('setReminderForm').addEventListener('submit', e => {
+            e.preventDefault();
+            fetch('set_reminder.php', { method:'POST', body: new FormData(e.target) })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) { alert('Reminder set!'); e.target.reset(); reminderPopup.style.display='none'; fetchTasks(); fetchNotifications(); }
+                    else alert('Error: ' + data.error);
+                })
+                .catch(err => console.error(err));
+        });
+    </script>
+
+   <script>
+    const dailySummaryData = <?= json_encode($dailySummaryData) ?>;
+    const showDailySummary = <?= $showDailySummary ? 'true' : 'false' ?>;
+    const userName = "<?= htmlspecialchars($userName) ?>";
+
+    document.getElementById('notifBell').onclick = () => { 
+        document.getElementById('notifDropdown').classList.toggle('show'); 
+    };
+    
+    document.addEventListener('click', e => { 
+        if (!e.target.closest('.notification-bell') && !e.target.closest('.notif-dropdown')) 
+            document.getElementById('notifDropdown').classList.remove('show'); 
+    });
+
+    function generateDailySummary(data) {
+        const hour = new Date().getHours();
+        const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+        
+        document.getElementById('dailyGreeting').innerHTML = `${greeting}, <strong>${userName}</strong>!`;
+
+        let html = '';
+
+        if (data.overdue > 0) html += `<p style='color:#e74c3c;font-weight:600;'><i class='fas fa-exclamation-triangle'></i> You have ${data.overdue} overdue task${data.overdue > 1 ? 's' : ''}.</p>`;
+        if (data.dueToday > 0) html += `<p style='color:#f4a261;font-weight:600;'><i class='fas fa-bell'></i> ${data.dueToday} task${data.dueToday > 1 ? 's' : ''} due today!</p>`;
+        if (data.inReview > 0) html += `<p><i class='fas fa-hourglass-half'></i> ${data.inReview} task${data.inReview > 1 ? 's' : ''} awaiting approval.</p>`;
+        if (data.unreadMsg > 0) html += `<p><i class='fas fa-envelope'></i> You have <strong>${data.unreadMsg}</strong> new message${data.unreadMsg > 1 ? 's' : ''}.</p>`;
+
+        // Updated Daily Report Status with new time window
+        if (data.reportSubmitted) {
+            html += `<p style='color:#2ecc71;font-weight:600;'>✅ Daily report submitted today.</p>`;
+        } else {
+            const nowHour = new Date().getHours();
+            const nowMin  = new Date().getMinutes();
+            const inWindow = (nowHour === 16) || (nowHour === 17 && nowMin === 0);
+
+            if (inWindow) {
+                html += `<p style='color:#f59e0b;font-weight:600;'>🟡 Daily report window is OPEN (16:00 - 17:00)</p>`;
+            } else {
+                html += `<p style='color:#e74c3c;font-weight:600;'>🚨 ACTION REQUIRED: Daily report NOT submitted yet.</p>`;
+            }
+        }
+
+        if (!html) html = '<p>You\'re all caught up! Have a productive day.</p>';
+
+        document.getElementById('dailySummaryText').innerHTML = html;
+        document.getElementById('dailyTime').textContent = 'As of ' + new Date().toLocaleTimeString('en-ZA', {hour:'2-digit',minute:'2-digit'});
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if (showDailySummary) {
+            generateDailySummary(dailySummaryData);
+            document.getElementById('dailySummary').style.display = 'flex';
+        }
+    });
+</script>
+</body>
+</html>

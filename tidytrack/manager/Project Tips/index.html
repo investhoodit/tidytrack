@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Project Preparation Tool</title>
+  <style>
+    /* Reset & basics */
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f4f7f8;
+      color: #333;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    /* Container card */
+    .container {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+      max-width: 480px;
+      width: 100%;
+      padding: 30px 40px;
+      transition: box-shadow 0.3s ease;
+    }
+    .container:hover {
+      box-shadow: 0 12px 32px rgba(0,0,0,0.15);
+    }
+
+    /* Heading */
+    h1 {
+      font-weight: 700;
+      font-size: 1.8rem;
+      margin-bottom: 25px;
+      color: #2a4d69;
+      text-align: center;
+      letter-spacing: 1.2px;
+    }
+
+    /* Form */
+    form label {
+      display: block;
+      margin-bottom: 15px;
+      font-weight: 600;
+      color: #445566;
+      font-size: 0.95rem;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 12px 14px;
+      margin-top: 6px;
+      font-size: 1rem;
+      border-radius: 8px;
+      border: 1.8px solid #cbd6e2;
+      transition: border-color 0.3s ease;
+      outline-offset: 2px;
+      outline-color: transparent;
+      font-family: inherit;
+    }
+    input:focus, select:focus {
+      border-color: #5271ff;
+      outline-color: #5271ff88;
+      box-shadow: 0 0 8px #5271ff55;
+    }
+
+    button {
+      width: 100%;
+      background-color: #5271ff;
+      border: none;
+      color: white;
+      font-weight: 700;
+      font-size: 1.1rem;
+      padding: 14px 0;
+      border-radius: 10px;
+      cursor: pointer;
+      margin-top: 25px;
+      box-shadow: 0 6px 12px #5271ff80;
+      transition: background-color 0.3s ease, box-shadow 0.3s ease;
+      user-select: none;
+    }
+    button:hover {
+      background-color: #3f57d1;
+      box-shadow: 0 8px 18px #3f57d199;
+    }
+    button:active {
+      background-color: #2f3fb4;
+      box-shadow: 0 4px 8px #2f3fb444;
+      transform: translateY(1px);
+    }
+
+    /* Results area */
+    .results {
+      margin-top: 35px;
+      background: #eef4ff;
+      border-radius: 12px;
+      padding: 25px 30px;
+      box-shadow: inset 0 0 12px #c9d8ffaa;
+      color: #2a3a5b;
+      font-size: 1rem;
+      line-height: 1.5;
+    }
+
+    .results h3 {
+      margin-top: 0;
+      margin-bottom: 12px;
+      color: #5271ff;
+      font-weight: 700;
+      font-size: 1.2rem;
+      border-bottom: 2px solid #5271ff44;
+      padding-bottom: 4px;
+    }
+
+    ul {
+      list-style-type: disc;
+      padding-left: 20px;
+      margin-bottom: 20px;
+    }
+    ul li {
+      margin-bottom: 6px;
+    }
+
+    /* Responsive */
+    @media (max-width: 540px) {
+      .container {
+        padding: 25px 20px;
+        max-width: 100%;
+      }
+      button {
+        font-size: 1rem;
+        padding: 12px 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Project Preparation Tool</h1>
+
+    <form id="projectForm">
+      <label>
+        Project Name
+        <input id="project_name" required placeholder="e.g. Website Redesign" />
+      </label>
+      <label>
+        Department
+        <input id="department" required placeholder="e.g. IT Department" />
+      </label>
+      <label>
+        Company
+        <input id="company_name" placeholder="e.g. TechSolutions Ltd" />
+      </label>
+
+      <button type="submit">Generate Tips</button>
+    </form>
+
+    <div class="results" id="results" style="display:none;">
+      <h3>Project Tips</h3>
+      <ul id="project_tips"></ul>
+
+      <h3>Suggested Deliverables</h3>
+      <ul id="deliverables"></ul>
+
+      <h3>Key Tasks</h3>
+      <ul id="tasks"></ul>
+
+      <h3>Potential Risks</h3>
+      <ul id="risks"></ul>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('projectForm');
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+
+      const payload = {
+        project_name: document.getElementById('project_name').value.trim(),
+        department: document.getElementById('department').value.trim(),
+        company_name: document.getElementById('company_name').value.trim(),
+      };
+
+      const resultsDiv = document.getElementById('results');
+
+      try {
+        const response = await fetch('prepare_project.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+
+        if (!data.ok) {
+          alert('Error: ' + data.error);
+          return;
+        }
+
+        function fillList(id, items) {
+          const ul = document.getElementById(id);
+          ul.innerHTML = items.map(i => `<li>${i}</li>`).join('');
+        }
+
+        fillList('project_tips', data.data.project_tips);
+        fillList('deliverables', data.data.deliverables);
+        fillList('tasks', data.data.tasks);
+        fillList('risks', data.data.risks);
+
+        resultsDiv.style.display = 'block';
+
+      } catch (err) {
+        alert('Request failed: ' + err.message);
+      }
+    });
+  </script>
+</body>
+</html>

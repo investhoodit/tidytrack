@@ -1,0 +1,216 @@
+<?php
+session_start();
+require_once __DIR__ . '/../dp.php';
+
+// --- AUTH GUARD: allow only admin (add 'manager' if you want) ---
+$userId = $_SESSION['user_id'] ?? null;      // should be users.userID
+$role   = strtolower(trim($_SESSION['role'] ?? ''));
+$allowed = ['admin']; // add 'manager' if needed
+if (!$userId || !in_array($role, $allowed, true)) {
+  http_response_code(403);
+  echo "Forbidden";
+  exit;
+}
+
+// Optional: show user's name if exists
+$displayName = 'Admin';
+if ($stmt = $conn->prepare("SHOW COLUMNS FROM users LIKE 'name'")) {
+  $stmt->execute(); $hasName = $stmt->get_result()->num_rows > 0; $stmt->close();
+  if ($hasName) {
+    $stmt = $conn->prepare("SELECT COALESCE(name, email) AS d FROM users WHERE userID = ?");
+  } else {
+    $stmt = $conn->prepare("SELECT email AS d FROM users WHERE userID = ?");
+  }
+  $stmt->bind_param('i', $userId);
+  $stmt->execute();
+  $displayName = ($stmt->get_result()->fetch_assoc()['d'] ?? 'Admin');
+  $stmt->close();
+}
+?>
+<!DOCTYPE html>
+<html lang="en-ZA">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>INVESTHOOD_TSM • Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
+  <style>
+    :root{--bg:#f6f8fb;--card:#fff;--ink:#1d3557;--muted:#6b7b93;--accent:#2a9d8f;--danger:#e63946;--line:#e9eef5;--shadow:0 8px 24px rgba(0,0,0,.06);}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:Poppins,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+    .layout{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+    .sidebar{position:sticky;top:0;height:100vh;padding:1rem;background:var(--card);border-right:1px solid var(--line)}
+    .brand{display:flex;align-items:center;gap:.6rem;font-weight:700;font-size:1.1rem;padding:.5rem .75rem}
+    .brand i{color:var(--blue)}
+    .nav{margin-top:1rem;display:flex;flex-direction:column;gap:.25rem}
+    .nav a{display:flex;align-items:center;gap:.7rem;padding:.6rem .75rem;text-decoration:none;color:var(--ink);border-radius:10px;border:1px solid transparent}
+    .nav a:hover{background:rgba(42,157,143,.08);border-color:var(--line)}
+    .nav a.active{background:rgba(42,157,143,.12);border-color:var(--accent)}
+    .sidebar-footer{margin-top:auto;padding:.75rem .75rem 0;color:var(--muted);font-size:.9rem}
+    .main{display:flex;flex-direction:column;min-width:0}
+    .topbar{position:sticky;top:0;z-index:10;background:var(--card);display:flex;gap:1rem;align-items:center;justify-content:space-between;padding:.8rem 1rem;border-bottom:1px solid var(--line);box-shadow:var(--shadow)}
+    .wrap{max-width:1280px;margin:1rem auto;padding:0 1rem}
+    .hero{display:flex;gap:1rem;flex-wrap:wrap;align-items:center;justify-content:space-between;background:linear-gradient(125deg, rgba(42,157,143,.14), transparent 60%);border:1px solid var(--line);border-radius:16px;padding:1rem}
+    .hero h1{font-size:1.35rem;margin:.1rem 0}
+    .btn{border:1px solid var(--line);background:#fff;border-radius:10px;padding:.5rem .8rem;color:var(--ink);text-decoration:none;display:inline-flex;gap:.5rem;align-items:center}
+    .btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+    .filters{display:grid;grid-template-columns:repeat(12,1fr);gap:.5rem;background:#fff;border:1px solid var(--line);border-radius:16px;padding:.8rem 1rem;margin-top:1rem}
+    .filters input,.filters select{width:100%;padding:.55rem .7rem;border:1px solid var(--line);border-radius:10px;font-family:inherit}
+    .filters .actions{grid-column:span 12;display:flex;gap:.5rem;justify-content:flex-end}
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:1rem;margin-top:1rem}
+    .card{grid-column:span 6;background:#fff;border:1px solid var(--line);border-radius:16px;padding:1rem;box-shadow:var(--shadow);text-decoration:none;color:inherit}
+    .card:hover{transform:translateY(-1px)}
+    .label{color:var(--muted);font-size:.9rem}
+    .title{font-weight:700}
+    .footnote{color:var(--muted);font-size:.9rem;margin-top:.75rem}
+    @media(max-width:900px){.layout{grid-template-columns:1fr}.card{grid-column:span 12}}
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand"></i> INVESTHOOD_TSM   • Admin</div>
+      <nav class="nav">
+        <a href="admin_index.php" class="active"><i class="fa-solid fa-house"></i>Home</a>
+        <a href="admin_dashboard.php"><i class="fa-solid fa-chart-line"></i>Dashboard</a>
+        <a href="admin_logs.php"><i class="fa-solid fa-clipboard-list"></i>Monitoring Logs</a>       
+        <a href="../logout.php"><i class="fa-solid fa-right-from-bracket"></i>Logout</a>
+      </nav>
+      <div class="sidebar-footer">
+        <div>Welcome, <?= htmlspecialchars($displayName) ?></div>
+        <div><small>Africa/Johannesburg • <span id="clock">--:--:--</span></small></div>
+      </div>
+    </aside>
+
+    <section class="main">
+      <div class="topbar">
+        <div><strong>Admin Home</strong></div>
+        <div><a class="btn btn-primary" href="admin_logs.php"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open Logs</a></div>
+      </div>
+
+      <div class="wrap">
+        <div class="hero">
+          <div>
+            <h1>Welcome, <?= htmlspecialchars($displayName) ?></h1>
+            <div class="footnote">Jump to your dashboard, view monitoring logs, or filter logs fast with the form below.</div>
+          </div>
+          <div>
+            <a class="btn" href="admin_dashboard.php"><i class="fa-solid fa-chart-pie"></i> Dashboard</a>
+            <a class="btn" href="admin_logs.php"><i class="fa-solid fa-clipboard-list"></i> Logs</a>
+          </div>
+        </div>
+
+        <!-- Quick Filters send to admin_logs.php -->
+        <form class="filters" action="admin_logs.php" method="get">
+          <select name="role">
+            <option value="">All roles</option>
+            <option value="admin">Admin</option>
+            <option value="manager">Manager</option>
+            <option value="leader">Leader</option>
+            <option value="member">Member</option>
+          </select>
+          <input type="text" name="user" placeholder="User name or email">
+          <input type="text" name="activity" placeholder="Activity (e.g., Login, Task.Update)">
+          <input type="text" name="ip" placeholder="IP (e.g., 105. or 192.168.1.10)">
+          <input type="date" name="from">
+          <input type="date" name="to">
+          <input type="text" name="q" placeholder="Search description / user agent" style="grid-column: span 12;">
+          <div class="actions">
+            <button class="btn" type="submit"><i class="fa-solid fa-filter"></i> Apply filters</button>
+            <a class="btn" href="admin_index.php"><i class="fa-solid fa-rotate-left"></i> Reset</a>
+            <a class="btn" id="todayBtn" href="#"><i class="fa-solid fa-calendar-day"></i> Today</a>
+            <a class="btn" id="last7Btn" href="#"><i class="fa-solid fa-calendar-week"></i> Last 7 days</a>
+          </div>
+        </form>
+
+        <div class="grid">
+          <a class="card" href="admin_dashboard.php">
+            <div class="label"><i class="fa-solid fa-chart-line"></i> Overview</div>
+            <div class="title">Open Admin Dashboard</div>
+            <div class="footnote">Trends, events by role, top activity types, recent activity.</div>
+          </a>
+          <a class="card" href="admin_logs.php">
+            <div class="label"><i class="fa-solid fa-clipboard-list"></i> Monitoring</div>
+            <div class="title">Open Monitoring Logs</div>
+            <div class="footnote">Filter by role, user, IP, date range. Export CSV.</div>
+          </a>
+        </div>
+
+        <div class="footnote">Tip: Use the quick date buttons above to jump directly to today or last 7 days in Logs.</div>
+      </div>
+    </section>
+  </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const container = document.getElementById('main-content');
+
+    function loadPage(page) {
+      fetch(page, { credentials: 'same-origin' })
+        .then(res => {
+          if (!res.ok) throw new Error('Failed to load ' + page);
+          return res.text();
+        })
+        .then(html => {
+          container.innerHTML = html;
+          // Optional: update active link
+          document.querySelectorAll('#sidebar .nav a[data-page]').forEach(a => {
+            a.classList.toggle('active', a.getAttribute('data-page') === page);
+          });
+        })
+        .catch(err => {
+          container.innerHTML = `<div class="card" style="grid-column:span 12">
+            <div class="title">Error</div>
+            <div class="footnote">${err.message}</div>
+          </div>`;
+        });
+    }
+
+    // ✅ Load admin dashboard by default
+    loadPage('admin_dashboard.php');
+
+    // Sidebar AJAX navigation
+    document.querySelectorAll('#sidebar .nav a[data-page]').forEach(link => {
+      link.addEventListener('click', function (e) {
+        e.preventDefault();
+        const page = this.getAttribute('data-page');
+        if (page) loadPage(page);
+      });
+    });
+
+    // Live SA clock
+    const clock = document.getElementById('clock');
+    function tick(){
+      const now = new Date();
+      clock.textContent = now.toLocaleTimeString('en-ZA', {hour12:false, timeZone:'Africa/Johannesburg'});
+    }
+    setInterval(tick, 1000); tick();
+
+    // Quick links to Logs with dates
+    function ymd(d){ return d.toISOString().slice(0,10); }
+    const todayBtn = document.getElementById('todayBtn');
+    const last7Btn = document.getElementById('last7Btn');
+
+    if (todayBtn) {
+      todayBtn.addEventListener('click', e=>{
+        e.preventDefault();
+        const d = new Date();
+        const s = ymd(d);
+        loadPage(`admin_logs.php?from=${encodeURIComponent(s)}&to=${encodeURIComponent(s)}`);
+      });
+    }
+
+    if (last7Btn) {
+      last7Btn.addEventListener('click', e=>{
+        e.preventDefault();
+        const to = new Date(); const from = new Date(); from.setDate(from.getDate()-6);
+        loadPage(`admin_logs.php?from=${encodeURIComponent(ymd(from))}&to=${encodeURIComponent(ymd(to))}`);
+      });
+    }
+  });
+</script>
+
+
+</body>
+</html>

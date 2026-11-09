@@ -1,0 +1,108 @@
+[2026-03-26 18:19:06] Attempting mail to: thatoaphane7@gmail.com | Subject: Daily Member Reports - 26 Mar 2026
+[2026-03-26 18:19:06] mail() success for thatoaphane7@gmail.com
+[2026-03-26 18:24:21] Trying to send email to thatoaphane7@gmail.com
+[2026-03-26 18:24:21] mail() succeeded for thatoaphane7@gmail.com
+[2026-03-26 18:32:41] Recipient: thatoaphane7@gmail.com
+[2026-03-26 18:32:41] Subject: Daily Member Reports - 26 Mar 2026
+[2026-03-26 18:32:41] Connection failed: 110 - Connection timed out
+[2026-03-26 18:33:19] Recipient: thatoaphane7@gmail.com
+[2026-03-26 18:33:19] Subject: Daily Member Reports - 26 Mar 2026
+[2026-03-26 18:33:19] Connection failed: 110 - Connection timed out
+[2026-03-26 18:41:14] MAIL SENT => to=thatoaphane7@gmail.com | subject=Daily Member Reports - 26 Mar 2026
+[2026-03-26 18:42:07] MAIL SENT => to=thatoaphane7@gmail.com | subject=Daily Member Reports - 26 Mar 2026
+[2026-03-26 18:44:04] MAIL SENT => to=thatoaphane7@gmail.com | subject=Daily Member Reports - 26 Mar 2026
+[2026-03-26 18:49:18] MAIL SENT => to=thatoaphane7@gmail.com | subject=Daily Member Reports - 26 Mar 2026
+[2026-03-26 18:58:41] Attempting send to thatoaphane7@gmail.com
+[2026-03-26 18:58:41] MAIL SENT => to=thatoaphane7@gmail.com | subject=Daily Member Reports - 26 Mar 2026
+[2026-03-26 19:03:45] Attempting send to thatoaphane7@gmail.com
+[2026-03-26 19:03:45] MAIL SENT => to=thatoaphane7@gmail.com | subject=Daily Member Reports - 26 Mar 2026
+[2026-03-26 19:04:35] Attempting send to thatoaphane7@gmail.com
+[2026-03-26 19:04:35] MAIL SENT => to=thatoaphane7@gmail.com | subject=Daily Member Reports - 26 Mar 2026
+[2026-03-26 19:53:12] Attempting send to thatoaphane7@gmail.com
+[2026-03-26 19:53:12] MAIL SENT => to=thatoaphane7@gmail.com | subject=Daily Member Reports - 26 Mar 2026
+[2026-03-29 13:46:20] Attempting send to jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 29 Mar 2026
+[2026-03-29 13:46:20] MAIL SENT => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 29 Mar 2026
+[2026-03-30 17:14:16] Attempting send to jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 30 Mar 2026
+[2026-03-30 17:14:16] MAIL SENT => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 30 Mar 2026
+[2026-03-31 17:00:39] Attempting send to jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 31 Mar 2026
+[2026-03-31 17:00:39] MAIL SENT => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 31 Mar 2026
+[2026-04-01 21:26:11] Attempting send to jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 01 Apr 2026
+[2026-04-01 21:26:13] MAIL SENT => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 01 Apr 2026
+[2026-04-01 21:27:36] Attempting send to jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 01 Apr 2026
+[2026-04-01 21:27:36] MAIL SENT => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 01 Apr 2026
+[2026-04-01 21:31:44] Attempting send to jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 01 Apr 2026
+[2026-04-01 21:31:44] MAIL SENT => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 01 Apr 2026
+[2026-04-01 21:49:49] Attempting send to jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 01 Apr 2026
+[2026-04-01 21:49:50] MAIL SENT with -f => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 01 Apr 2026
+[2026-04-01 21:50:09] Attempting send to jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 01 Apr 2026
+[2026-04-01 21:50:10] MAIL SENT with -f => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 01 Apr 2026
+[2026-04-01 21:51:52] Attempting send to jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 01 Apr 2026
+[2026-04-01 21:51:52] MAIL SENT with -f => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 01 Apr 2026
+[2026-04-01 21:56:57] TEST MODE active: overriding recipient to thatoaphane7@gmail.com
+[2026-04-01 21:56:57] TEST MODE active: CC disabled
+[2026-04-01 21:56:57] Attempting mail() with envelope sender => to=thatoaphane7@gmail.com | subject=TEST - Daily Member Reports - 01 Apr 2026
+[2026-04-01 21:56:58] MAIL SENT using mail(..., -f) => to=thatoaphane7@gmail.com | subject=TEST - Daily Member Reports - 01 Apr 2026
+[2026-04-01 22:03:52] Attempting mail() with -f => to=thatoaphane7@gmail.com | subject=TEST - Daily Member Reports - 01 Apr 2026
+[2026-04-01 22:03:52] MAIL SENT via mail() with -f => to=thatoaphane7@gmail.com
+[2026-04-01 22:13:00] Attempting mail() with -f => to=thatoaphane7@gmail.com | subject=TEST - Daily Member Reports - 01 Apr 2026
+[2026-04-01 22:13:00] MAIL SENT via mail() with -f => to=thatoaphane7@gmail.com
+[2026-04-01 22:13:52] Attempting mail() with -f => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=TEST - Daily Member Reports - 01 Apr 2026
+[2026-04-01 22:13:52] MAIL SENT via mail() with -f => to=jerome.dhlamini@gmail.com
+[2026-04-01 22:15:00] Attempting mail() with -f => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 01 Apr 2026
+[2026-04-01 22:15:00] MAIL SENT via mail() with -f => to=jerome.dhlamini@gmail.com
+[2026-04-01 22:17:06] Attempting send to jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 01 Apr 2026
+[2026-04-01 22:17:07] MAIL SENT => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 01 Apr 2026
+[2026-04-02 10:24:00] Attempting send to jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 02 Apr 2026
+[2026-04-02 10:24:00] MAIL SENT => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 02 Apr 2026
+[2026-04-07 16:59:41] Attempting send to jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 07 Apr 2026
+[2026-04-07 16:59:41] MAIL SENT => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 07 Apr 2026
+[2026-04-07 17:00:23] Attempting send to jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 07 Apr 2026
+[2026-04-07 17:00:23] MAIL SENT => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 07 Apr 2026
+[2026-04-07 17:00:44] Attempting send to jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 07 Apr 2026
+[2026-04-07 17:00:44] MAIL SENT => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 07 Apr 2026
+[2026-04-07 17:00:54] Attempting send to jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 07 Apr 2026
+[2026-04-07 17:00:55] MAIL SENT => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 07 Apr 2026
+[2026-04-07 17:01:51] Attempting send to jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 07 Apr 2026
+[2026-04-07 17:01:51] MAIL SENT => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 07 Apr 2026
+[2026-04-07 17:08:00] Attempting send to jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 07 Apr 2026
+[2026-04-07 17:08:00] MAIL SENT => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 07 Apr 2026
+[2026-04-07 17:08:05] Attempting send to jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 07 Apr 2026
+[2026-04-07 17:08:05] MAIL SENT => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 07 Apr 2026
+[2026-04-08 17:06:38] Attempting send to jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 08 Apr 2026
+[2026-04-08 17:06:38] MAIL SENT => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 08 Apr 2026
+[2026-04-09 17:00:01] Attempting send to jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 09 Apr 2026
+[2026-04-09 17:00:01] MAIL SENT => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 09 Apr 2026
+[2026-04-10 16:59:31] Attempting send to jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 10 Apr 2026
+[2026-04-10 16:59:31] MAIL SENT => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 10 Apr 2026
+[2026-04-13 16:46:32] Attempting send to jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 13 Apr 2026
+[2026-04-13 16:46:32] MAIL SENT => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 13 Apr 2026
+[2026-04-13 17:18:05] Attempting send to jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 13 Apr 2026
+[2026-04-13 17:18:06] MAIL SENT => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 13 Apr 2026
+[2026-04-14 20:27:04] Attempting send to jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 14 Apr 2026
+[2026-04-14 20:27:04] MAIL SENT => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com | subject=Daily Member Reports - 14 Apr 2026
+[2026-04-15 17:08:18] Attempting send to jerome.dhlamini@gmail.com | cc=khensi23kumbe@gmail.com | subject=Daily Member Reports - 15 Apr 2026
+[2026-04-15 17:08:22] MAIL SENT => to=jerome.dhlamini@gmail.com | cc=khensi23kumbe@gmail.com | subject=Daily Member Reports - 15 Apr 2026
+[2026-04-15 17:54:17] Attempting send to jerome.dhlamini@gmail.com | cc=khensi23kumbe@gmail.com | subject=Daily Member Reports - 15 Apr 2026
+[2026-04-15 17:54:18] MAIL SENT => to=jerome.dhlamini@gmail.com | cc=khensi23kumbe@gmail.com | subject=Daily Member Reports - 15 Apr 2026
+[2026-04-15 19:57:06] Attempting send to mahlanguconstance8@gmail.com | cc=thatoaphane7@gmail.com,khensi23kumbe@gmail.com | subject=Daily Member Reports - 15 Apr 2026
+[2026-04-15 19:57:06] MAIL SENT => to=mahlanguconstance8@gmail.com | cc=thatoaphane7@gmail.com,khensi23kumbe@gmail.com | subject=Daily Member Reports - 15 Apr 2026
+[2026-04-16 17:02:40] Attempting send to jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com,khensi23kumbe@gmail.com | subject=Daily Member Reports - 16 Apr 2026
+[2026-04-16 17:02:40] MAIL SENT => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com,khensi23kumbe@gmail.com | subject=Daily Member Reports - 16 Apr 2026
+[2026-04-17 17:05:00] Attempting send to jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com,khensi23kumbe@gmail.com | subject=Daily Member Reports - 17 Apr 2026
+[2026-04-17 17:05:00] MAIL SENT => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com,khensi23kumbe@gmail.com | subject=Daily Member Reports - 17 Apr 2026
+[2026-04-20 17:02:17] Attempting send to jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com,khensi23kumbe@gmail.com | subject=Daily Member Reports - 20 Apr 2026
+[2026-04-20 17:02:18] MAIL SENT => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com,khensi23kumbe@gmail.com | subject=Daily Member Reports - 20 Apr 2026
+[2026-04-29 19:50:16] Attempting send to jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com,khensi23kumbe@gmail.com | subject=Daily Member Reports - 29 Apr 2026
+[2026-04-29 19:50:16] MAIL SENT => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com,khensi23kumbe@gmail.com | subject=Daily Member Reports - 29 Apr 2026
+[2026-05-06 17:07:54] Attempting send to jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com,khensi23kumbe@gmail.com | subject=Daily Member Reports - 06 May 2026
+[2026-05-06 17:07:54] MAIL SENT => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com,khensi23kumbe@gmail.com | subject=Daily Member Reports - 06 May 2026
+[2026-05-07 18:33:09] Attempting send to jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com,khensi23kumbe@gmail.com | subject=Daily Member Reports - 07 May 2026
+[2026-05-07 18:33:10] MAIL SENT => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com,khensi23kumbe@gmail.com | subject=Daily Member Reports - 07 May 2026
+[2026-05-08 17:03:33] Attempting send to jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com,khensi23kumbe@gmail.com | subject=Daily Member Reports - 08 May 2026
+[2026-05-08 17:03:33] MAIL SENT => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com,khensi23kumbe@gmail.com | subject=Daily Member Reports - 08 May 2026
+[2026-05-11 17:00:31] Attempting send to jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com,khensi23kumbe@gmail.com | subject=Daily Member Reports - 11 May 2026
+[2026-05-11 17:00:31] MAIL SENT => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com,khensi23kumbe@gmail.com | subject=Daily Member Reports - 11 May 2026
+[2026-05-20 20:31:56] Attempting send to jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com,khensi23kumbe@gmail.com | subject=Daily Member Reports - 20 May 2026
+[2026-05-20 20:31:57] MAIL SENT => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com,khensi23kumbe@gmail.com | subject=Daily Member Reports - 20 May 2026
+[2026-05-21 18:03:02] Attempting send to jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com,khensi23kumbe@gmail.com | subject=Daily Member Reports - 21 May 2026
+[2026-05-21 18:03:03] MAIL SENT => to=jerome.dhlamini@gmail.com | cc=thatoaphane7@gmail.com,khensi23kumbe@gmail.com | subject=Daily Member Reports - 21 May 2026

@@ -1,0 +1,58 @@
+/* dark-mode.css */
+
+/* Root variables for dark mode */
+:root {
+    --bg-color: #121212;
+    --card-color: #1e1e1e;
+    --text-color: #e0e0e0;
+    --muted-text-color: #a0a0a0;
+    --accent-color: #bb86fc;
+    --button-bg: #2c2c2c;
+    --button-text: #e0e0e0;
+}
+
+/* Apply dark mode */
+.dark-mode {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+}
+
+.dark-mode body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+}
+
+.dark-mode header,
+.dark-mode footer,
+.dark-mode nav,
+.dark-mode .card {
+    background-color: var(--card-color);
+    color: var(--text-color);
+    border-color: #333;
+}
+
+.dark-mode a {
+    color: var(--accent-color);
+}
+
+.dark-mode button {
+    background-color: var(--button-bg);
+    color: var(--button-text);
+    border: 1px solid #444;
+}
+
+/* Toggle button styles (for index page) */
+#darkModeToggle {
+    padding: 8px 16px;
+    cursor: pointer;
+    border-radius: 5px;
+    border: 1px solid #444;
+    background-color: var(--button-bg);
+    color: var(--button-text);
+    transition: all 0.3s ease;
+}
+
+#darkModeToggle:hover {
+    background-color: var(--accent-color);
+    color: #fff;
+}

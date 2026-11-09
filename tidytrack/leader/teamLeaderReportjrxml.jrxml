@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.21.5.final using JasperReports Library version 6.21.5-74d586df47b25dbd05bd0957999819196e59934a  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="teamLeaderReportjrxml" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="d7a4c547-e1b2-4dd7-bde8-46d6ce8ff2e0">
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="investhood"/>
+	<queryString language="SQL">
+		<![CDATA[SELECT 
+    t.title AS task_title,
+    t.description,
+    t.status,
+    t.due_date,
+    u.name AS assigned_to
+FROM 
+    tasks t
+LEFT JOIN 
+    users u ON t.assigned_to = u.userID
+ORDER BY 
+    t.due_date ASC]]>
+	</queryString>
+	<field name="task_title" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="title"/>
+		<property name="com.jaspersoft.studio.field.label" value="task_title"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="tasks"/>
+	</field>
+	<field name="description" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="description"/>
+		<property name="com.jaspersoft.studio.field.label" value="description"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="tasks"/>
+	</field>
+	<field name="status" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="status"/>
+		<property name="com.jaspersoft.studio.field.label" value="status"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="tasks"/>
+	</field>
+	<field name="due_date" class="java.sql.Date">
+		<property name="com.jaspersoft.studio.field.name" value="due_date"/>
+		<property name="com.jaspersoft.studio.field.label" value="due_date"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="tasks"/>
+	</field>
+	<field name="assigned_to" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="name"/>
+		<property name="com.jaspersoft.studio.field.label" value="assigned_to"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="users"/>
+	</field>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<pageHeader>
+		<band height="68" splitType="Stretch">
+			<image>
+				<reportElement x="0" y="0" width="79" height="68" uuid="d662bc77-f1ae-4800-8551-13c2293461b0"/>
+				<imageExpression><![CDATA["C:/Users/mahla/JaspersoftWorkspace/WhatsApp Image 2025-07-30 at 00.40.27.jpeg"]]></imageExpression>
+			</image>
+			<staticText>
+				<reportElement x="79" y="0" width="240" height="39" uuid="5940836b-300a-40a1-befd-888d7c97cc0e"/>
+				<textElement textAlignment="Center">
+					<font isBold="true"/>
+				</textElement>
+				<text><![CDATA[TSM LEADER'S REPORT]]></text>
+			</staticText>
+		</band>
+	</pageHeader>
+	<columnHeader>
+		<band height="61" splitType="Stretch">
+			<staticText>
+				<reportElement x="0" y="10" width="100" height="30" uuid="701ff9a6-91e5-4af4-b9e9-2838ee55b032"/>
+				<text><![CDATA[Task Title]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="100" y="10" width="140" height="30" uuid="a33a330f-37ef-4351-b27f-ad974ac8c4f9"/>
+				<text><![CDATA[Description]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="240" y="10" width="100" height="30" uuid="d83b6085-3c52-4a98-ba01-9833a2e2f38a"/>
+				<text><![CDATA[Status]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="340" y="10" width="100" height="30" uuid="ccbcdcd4-811a-4b75-8c3b-67ef4fd2169c"/>
+				<text><![CDATA[Due Date]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="440" y="10" width="100" height="30" uuid="1dc08ca2-7d21-4b36-93de-1451a08233af"/>
+				<text><![CDATA[Assigned To]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="125" splitType="Stretch">
+			<textField>
+				<reportElement x="0" y="0" width="100" height="30" uuid="0f0d2839-c636-4138-a7fc-43620c494308"/>
+				<textFieldExpression><![CDATA[$F{task_title}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="100" y="0" width="140" height="30" uuid="b25a2d08-a19e-4d41-93d9-481d647c8f81"/>
+				<textFieldExpression><![CDATA[$F{description}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="240" y="0" width="100" height="30" uuid="c693c8de-3abb-4172-abe8-0315c94e81f5"/>
+				<textFieldExpression><![CDATA[$F{status}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="340" y="0" width="100" height="30" uuid="7522248e-4886-4693-840d-6541544ceb6d"/>
+				<textFieldExpression><![CDATA[$F{due_date}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="440" y="0" width="100" height="30" uuid="7b5d798a-029d-47b6-b180-1080e603f35f"/>
+				<textFieldExpression><![CDATA[$F{assigned_to}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<columnFooter>
+		<band height="45" splitType="Stretch"/>
+	</columnFooter>
+	<pageFooter>
+		<band height="54" splitType="Stretch"/>
+	</pageFooter>
+	<summary>
+		<band height="42" splitType="Stretch"/>
+	</summary>
+</jasperReport>

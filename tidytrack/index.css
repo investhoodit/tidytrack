@@ -1,0 +1,255 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* ================================================================= */
+/* 1. COLOR VARIABLES & MODE SWITCHING                               */
+/* ================================================================= */
+
+:root {
+    /* Dark Mode (Default) */
+    --color-bg-primary: #0a0a0a;
+    --color-bg-secondary: #1a1a1a;
+    --color-text-default: #e2e8f0;
+    --color-text-secondary: #94a3b8;
+    --color-accent-main: #a78bfa; /* Purple-400 */
+    --color-accent-glow: #7c3aed; /* Purple-600 */
+    --color-glass-bg: rgba(255, 255, 255, 0.05);
+    --color-glass-border: rgba(255, 255, 255, 0.1);
+    --color-nav-bg: rgba(10, 10, 10, 0.9);
+    --color-nav-border: rgba(167, 139, 250, 0.2);
+    --color-scroll-thumb: #a78bfa;
+}
+
+/* Light Mode Override for system preference (fixes "unexpected token on media") */
+@media (prefers-color-scheme: light) {
+    :root:not(.dark-mode) {
+        --color-bg-primary: #ffffff;
+        --color-bg-secondary: #f3f4f6;
+        --color-text-default: #1f2937;
+        --color-text-secondary: #6b7280;
+        --color-accent-main: #6d28d9; /* Purple-700 */
+        --color-accent-glow: #8b5cf6; /* Purple-500 */
+        --color-glass-bg: rgba(255, 255, 255, 0.8);
+        --color-glass-border: rgba(109, 40, 217, 0.2);
+        --color-nav-bg: rgba(255, 255, 255, 0.95);
+        --color-nav-border: rgba(109, 40, 217, 0.1);
+        --color-scroll-thumb: #6d28d9;
+    }
+}
+
+/* Light Mode Override for manual class (fixes "expected rbrace") */
+.light-mode:root {
+    --color-bg-primary: #ffffff;
+    --color-bg-secondary: #f3f4f6;
+    --color-text-default: #1f2937;
+    --color-text-secondary: #6b7280;
+    --color-accent-main: #6d28d9; /* Purple-700 */
+    --color-accent-glow: #8b5cf6; /* Purple-500 */
+    --color-glass-bg: rgba(255, 255, 255, 0.8);
+    --color-glass-border: rgba(109, 40, 217, 0.2);
+    --color-nav-bg: rgba(255, 255, 255, 0.95);
+    --color-nav-border: rgba(109, 40, 217, 0.1);
+    --color-scroll-thumb: #6d28d9;
+} 
+
+/* ================================================================= */
+/* 2. BASE STYLES & UTILITIES                                        */
+/* ================================================================= */
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: var(--color-bg-primary);
+    color: var(--color-text-default);
+    min-height: 100vh;
+    transition: background 0.3s, color 0.3s;
+}
+
+.code-font {
+    font-family: 'JetBrains Mono', monospace;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-track {
+    background: var(--color-bg-primary);
+}
+::-webkit-scrollbar-thumb {
+    background: var(--color-scroll-thumb);
+    border-radius: 4px;
+}
+
+/* ================================================================= */
+/* 3. CORE COMPONENTS (Glass, Button, Nav)                           */
+/* ================================================================= */
+
+/* Glassmorphism */
+.glass {
+    background: var(--color-glass-bg);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--color-glass-border);
+    transition: all 0.3s ease;
+}
+.glass:hover {
+    border-color: var(--color-accent-main);
+    box-shadow: 0 0 30px rgba(124, 58, 237, 0.2);
+}
+
+.nav-glass {
+    background: var(--color-nav-bg);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--color-nav-border);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Button with Glow */
+.btn-glow {
+    background: linear-gradient(135deg, var(--color-accent-main), var(--color-accent-glow));
+    padding: 1rem 3rem;
+    border-radius: 999px;
+    font-weight: 600;
+    color: white;
+    box-shadow: 0 10px 30px rgba(124, 58, 237, 0.5);
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+}
+.btn-glow:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 15px 35px rgba(124, 58, 237, 0.6);
+}
+
+/* Profile Circle */
+.profile-circle {
+    width: 220px;
+    height: 220px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--color-accent-main), var(--color-accent-glow));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 6rem;
+    font-weight: 900;
+    color: white;
+    border: 10px solid rgba(167, 139, 250, 0.3);
+    box-shadow: 0 30px 60px rgba(124, 58, 237, 0.5);
+    overflow: hidden;
+    object-fit: cover;
+    transition: all 0.5s ease;
+}
+.profile-circle:hover {
+    transform: scale(1.05) rotate(2deg);
+    border-color: var(--color-accent-main);
+}
+
+/* ================================================================= */
+/* 4. ADVANCED LOADING SCREEN                                        */
+/* ================================================================= */
+
+#loader {
+    position: fixed;
+    inset: 0;
+    background: var(--color-bg-primary);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.8s ease;
+}
+#loader.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Advanced Loader - System Startup Simulation */
+.system-status-indicator {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    margin-bottom: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Inner Core (Logo Placeholder or Static Element) */
+.system-status-indicator::before {
+    content: 'TT'; /* Replace with actual logo if needed */
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 3rem;
+    font-weight: bold;
+    color: var(--color-accent-main);
+    text-shadow: 0 0 15px var(--color-accent-main);
+    z-index: 2;
+    animation: core-pulse 1.5s infinite alternate;
+}
+
+/* Outer Ring (Spinning Data Flow) */
+.system-status-indicator::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    border-top-color: var(--color-accent-main);
+    border-right-color: var(--color-accent-glow);
+    animation: data-flow 2s linear infinite;
+    opacity: 0.8;
+}
+
+/* Secondary Ring (Subtle Spin) */
+.system-status-indicator .secondary-ring {
+    position: absolute;
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    border: 2px dashed rgba(167, 139, 250, 0.3);
+    animation: subtle-spin 5s linear infinite reverse;
+}
+
+@keyframes core-pulse {
+    0% { transform: scale(1); opacity: 0.9; }
+    100% { transform: scale(1.05); opacity: 1; }
+}
+
+@keyframes data-flow {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes subtle-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ================================================================= */
+/* 5. OTHER ELEMENTS                                                 */
+/* ================================================================= */
+
+/* Hero Text Gradient (for light mode visibility) */
+.hero-gradient-text {
+    background: linear-gradient(90deg, var(--color-accent-main), #f472b6); /* Pink-400 */
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    /* Ensure the text is displayed with a fallback color in case the gradient fails */
+    color: var(--color-accent-main); 
+}
+
+/* Nav Logo/Title */
+.nav-logo-tt {
+    width: 12px;
+    height: 12px;
+    background: linear-gradient(to bottom right, var(--color-accent-main), var(--color-accent-glow));
+    box-shadow: 0 0 15px rgba(124, 58, 237, 0.5);
+}
+
+/* Scroll Reveal */
+.scroll-reveal {
+    opacity: 0;
+    transform: translateY(50px);
+    transition: all 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.scroll-reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+}

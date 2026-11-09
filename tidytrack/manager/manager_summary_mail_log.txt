@@ -1,0 +1,12 @@
+[2026-03-26 17:52:40] START send. Test mode=1. Recipients=jerome.dhlamini@gmail.com, thatoaphane7@gmail.com
+[2026-03-26 17:52:40] SUCCESS: mail() accepted for jerome.dhlamini@gmail.com
+[2026-03-26 17:52:40] SUCCESS: mail() accepted for thatoaphane7@gmail.com
+[2026-03-26 17:55:45] START send. Test mode=1. Recipients=jerome.dhlamini@gmail.com, thatoaphane7@gmail.com
+[2026-03-26 17:55:46] SUCCESS: mail() accepted for jerome.dhlamini@gmail.com
+[2026-03-26 17:55:46] SUCCESS: mail() accepted for thatoaphane7@gmail.com
+[2026-03-26 18:06:55] START send. Recipients=jerome.dhlamini@gmail.com, thatoaphane7@gmail.com
+[2026-03-26 18:06:55] SUCCESS: mail() for jerome.dhlamini@gmail.com
+[2026-03-26 18:06:55] SUCCESS: mail() for thatoaphane7@gmail.com
+[2026-03-26 18:08:32] START send. Recipients=jerome.dhlamini@gmail.com, thatoaphane7@gmail.com
+[2026-03-26 18:08:32] SUCCESS: mail() for jerome.dhlamini@gmail.com
+[2026-03-26 18:08:32] SUCCESS: mail() for thatoaphane7@gmail.com

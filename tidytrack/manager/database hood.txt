@@ -1,0 +1,166 @@
+
+require_once('TCPDF/library/tcpdf.php'); 
+
+// Custom PDF header/footer
+class MYPDF extends TCPDF {
+    public function Header() {
+        $logo = K_PATH_IMAGES . 'INVESTHOOD.jpg';
+        if (file_exists($logo)) {
+            $this->Image($logo, 15, 10, 25);
+        }
+        $this->SetFont('helvetica', 'B', 16);
+        $this->Cell(0, 15, 'INVESTHOOD TEAM SYSTEM MANAGER', 0, false, 'C');
+        $this->Ln(8);
+        $this->SetFont('helvetica', '', 12);
+        $this->Cell(0, 15, 'Project Report (Edited)', 0, false, 'C');
+        $this->Ln(10);
+    }
+
+    public function Footer() {
+        $this->SetY(-15);
+        $this->SetFont('helvetica', 'I', 9);
+        $this->Cell(0, 10, 'Generated on ' . date('Y-m-d') . ' | Page ' .
+        $this->getAliasNumPage() . '/' . $this->getAliasNbPages(), 0, false, 'C');
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+database hood
+
+TABLE users 
+userID	
+name
+email	
+password	
+role	
+team_id
+
+TABLE team_members 
+id	
+team_id	
+name
+
+TABLE  teams
+id	
+name
+
+TABLE tasks
+taskID	
+taskTitle	
+description	
+createdBy	
+team_id	
+assignTo	
+priority	
+dueDate
+
+TABLE projects
+id	
+team_id	
+name	
+description
+
+
+-- ✅ Create Database
+CREATE DATABASE IF NOT EXISTS hood;
+USE hood;
+
+-- ✅ Users Table
+CREATE TABLE users (
+    userID INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    role ENUM('manager','member') DEFAULT 'member',
+    team_id INT DEFAULT NULL,
+    FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE SET NULL
+);
+
+-- ✅ Teams Table
+CREATE TABLE teams (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL
+);
+
+-- ✅ Team Members Table (Optional, if you store members separately)
+CREATE TABLE team_members (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    team_id INT NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE
+);
+
+-- ✅ Projects Table
+CREATE TABLE projects (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    team_id INT NOT NULL,
+    name VARCHAR(150) NOT NULL,
+    description TEXT,
+    FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE
+);
+
+-- ✅ Tasks Table
+CREATE TABLE tasks (
+    taskID INT AUTO_INCREMENT PRIMARY KEY,
+    taskTitle VARCHAR(150) NOT NULL,
+    description TEXT,
+    createdBy INT NOT NULL,
+    team_id INT,
+    assignTo INT,
+    priority ENUM('low','medium','high') DEFAULT 'medium',
+    dueDate DATE,
+    FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE,
+    FOREIGN KEY (assignTo) REFERENCES users(userID) ON DELETE SET NULL
+);
+
+-- ✅ Timesheets Table
+CREATE TABLE timesheets (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    date DATE NOT NULL,
+    hours_worked DECIMAL(5,2) NOT NULL,
+    notes VARCHAR(255),
+    task_id INT DEFAULT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(userID) ON DELETE CASCADE,
+    FOREIGN KEY (task_id) REFERENCES tasks(taskID) ON DELETE SET NULL
+);
+
+-- ✅ Insert Example Data
+INSERT INTO teams (name) VALUES ('Development'), ('Marketing');
+
+INSERT INTO users (email, password, role, team_id) VALUES
+('manager@hood.com', '123456', 'manager', NULL),
+('john@hood.com', '123456', 'member', 1),
+('jane@hood.com', '123456', 'member', 1),
+('paul@hood.com', '123456', 'member', 2);
+
+INSERT INTO projects (team_id, name, description) VALUES
+(1, 'Website Revamp', 'Redesign the company website'),
+(2, 'Ad Campaign', 'Social media marketing campaign');
+
+INSERT INTO tasks (taskTitle, description, createdBy, team_id, assignTo, priority, dueDate) VALUES
+('Create Homepage', 'Design and implement homepage UI', 1, 1, 2, 'high', '2025-08-10'),
+('SEO Optimization', 'Improve website SEO', 1, 1, 3, 'medium', '2025-08-15'),
+('Facebook Ads', 'Run Facebook Ads for campaign', 1, 2, 4, 'medium', '2025-08-20');
+
+INSERT INTO timesheets (user_id, date, hours_worked, notes, task_id) VALUES
+(2, '2025-07-29', 6, 'Worked on homepage layout', 1),
+(3, '2025-07-30', 5, 'SEO keyword research', 2),
+(4, '2025-07-31', 4, 'Created ad creatives', 3);
+
+
+
+
+By messaging ChatGPT, you agree to our Terms and have read our Privacy Policy. See Cookie Preferences.
+Don't share sensitive info. Chats may be reviewed and used to train our models. Learn more
+

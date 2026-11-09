@@ -1,0 +1,36 @@
+     /* DARK MODE FEATURE */
+body.dark-mode {
+    --accent: #bb86fc; /* A color that works well on dark backgrounds */
+    --bubble-me: #3700b3;
+    --bubble-them: #212121;
+    --bg: #121212;
+    color: #e0e0e0; /* Lighter text for the dark background */
+}
+
+body.dark-mode .sidebar {
+    background: #1e1e1e;
+    border-right-color: #333;
+}
+
+body.dark-mode .stat-card {
+    background: #1e1e1e;
+    box-shadow: 0 2px 4px rgba(255, 255, 255, 0.05);
+}
+
+body.dark-mode .stat-card h4 {
+    color: #e0e0e0;
+}
+
+body.dark-mode .sidebar ul li a {
+    color: #bbb;
+}
+
+body.dark-mode .sidebar ul li a:hover,
+body.dark-mode .sidebar ul li a.active {
+    background: #2a2a2a;
+    color: var(--accent);
+}
+
+body.dark-mode .dashboard-welcome {
+    color: #f5f5f5;
+}

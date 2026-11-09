@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tidy Track - WorkHub</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="theme.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: #fff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 2rem 4rem;
+      overflow-x: hidden;
+      position: relative;
+    }
+    /* --- Preloader Styles --- */
+    #preloader {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #fff;
+      z-index: 9999; /* Ensure it's on top of everything */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      opacity: 1;
+      visibility: visible;
+      transition: opacity 0.5s ease, visibility 0.5s ease;
+    }
+    
+    .preloader-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      width: 250px;
+      height: 5px; /* Height for the initial line */
+    }
+
+    .loading-line {
+      width: 100%;
+      height: 100%;
+      background: #ccc;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .loading-line::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 100%;
+      background: white;
+      transform: translateX(-100%);
+      animation: cutLine 2s linear forwards; /* White line cutting horizontally (2s) */
+    }
+
+    @keyframes cutLine {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    .logo-animation {
+      position: absolute;
+      top: 0; /* Align to the top of the line container */
+      opacity: 0;
+      display: none; /* Hidden initially */
+      width: 100%; 
+      height: auto;
+      /* DURATION: 6s + DELAY: 2s = 8s TOTAL */
+      animation: fadeInLogo 6s ease-out 2s forwards;
+    }
+
+    .logo-animation img {
+      width: 100%;
+      height: auto;
+      max-width: 250px;
+    }
+
+    @keyframes fadeInLogo {
+      /* 0% starts at t=2s (after line cut) */
+      0% { 
+        opacity: 0; 
+        transform: translateY(20px); /* Start below the line */
+      }
+      /* 16.67% is 1 second later at t=3s (Pop-in finished) */
+      16.67% { 
+        opacity: 1; 
+        transform: translateY(-125%); /* Final "on top" position */
+      }
+      /* 83.33% is 1 second before end at t=7s (Hold position) */
+      83.33% { 
+        opacity: 1; 
+        transform: translateY(-125%);
+      }
+      /* 100% is at t=8s (Fade out finished) */
+      100% { 
+        opacity: 0; 
+        transform: translateY(-150%); /* Fades up and out */
+      }
+    }
+    /* --- End Preloader Styles --- */
+
+    .logo {
+      position: absolute;
+      top: 1.5rem;
+      left: 2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      z-index: 1000;
+    }
+    .logo img { width: 35px; }
+    .logo span {
+      font-weight: bold;
+      font-size: 1.1rem;
+      color: #1d3557;
+    }
+    .left-content {
+      max-width: 50%;
+      animation: fadeInLeft 1s ease-out;
+      z-index: 1000;
+    }
+    .left-content h4 {
+      color: #457b9d;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+    }
+    .left-content h1 {
+      font-size: 2.8rem;
+      margin-bottom: 1rem;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+    .left-content p {
+      font-size: 1rem;
+      margin-bottom: 2rem;
+      color: #444;
+    }
+    .buttons {
+      display: flex;
+      gap: 1rem;
+      z-index: 1000;
+    }
+    .buttons button {
+      padding: 0.8rem 1.5rem;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .buttons .sign-in { background: #1d3557; color: #fff; }
+    .buttons .sign-up { background: #e63946; color: #fff; }
+    .right-illustration {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .right-illustration img {
+      width: 100%;
+      max-width: 600px;
+      animation: fadeInRight 1s ease-out;
+    }
+    .popup-form {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 2rem;
+      border-radius: 15px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      z-index: 1100;
+      display: none;
+      animation: fadeSlideUp 0.5s ease forwards;
+    }
+    .popup-form h3 {
+      margin-bottom: 1.5rem;
+      color: #1d3557;
+      text-align: center;
+    }
+    .popup-form input, .popup-form select {
+      width: 100%;
+      padding: 0.75rem;
+      margin-bottom: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    .popup-form input.error, .popup-form select.error {
+      border-color: #e63946;
+      background: #fff5f5;
+    }
+    .popup-form button {
+      background: #1d3557;
+      color: white;
+      width: 100%;
+      padding: 0.75rem;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .popup-form button:hover {
+      background: #2a4b7c;
+    }
+    .popup-form .google-login {
+      background: #db4437;
+      margin-top: 0.5rem;
+    }
+    .popup-form .close-btn {
+      position: absolute;
+      top: 10px;
+      right: 15px;
+      font-size: 1.2rem;
+      cursor: pointer;
+      color: #aaa;
+    }
+   .error-container {
+  background: #ffe6e6;
+  border: 1px solid #e63946;
+  border-radius: 12px;
+  padding: 1.2rem 1.4rem;
+  margin-bottom: 1.5rem;
+  display: none;
+  color: #e63946;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+.error-container ul {
+  list-style: none;
+  padding: 0;
+}
+.error-container li {
+  margin-bottom: 0.6rem;
+}
+    .shake {
+      animation: shake 0.5s ease-in-out;
+    }
+    @keyframes shake {
+      0%, 100% { transform: translate(-50%, -50%); }
+      10%, 30%, 50%, 70%, 90% { transform: translate(-50%, -50%) translateX(-10px); }
+      20%, 40%, 60%, 80% { transform: translate(-50%, -50%) translateX(10px); }
+    }
+    .cookie-popup {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      width: 100%;
+      background: white;
+      padding: 1.5rem 4rem;
+      box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+      z-index: 900;
+      display: none;
+      font-size: 0.9rem;
+      color: #333;
+    }
+    .cookie-popup h3 {
+      font-size: 1.1rem;
+      color: #1d3557;
+      margin-bottom: 0.5rem;
+    }
+    .cookie-popup p {
+      margin-bottom: 1rem;
+      color: #444;
+    }
+    .cookie-popup .buttons {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .cookie-popup button {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 4px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .cookie-popup .accept {
+      background: #1d3557;
+      color: #fff;
+    }
+    .cookie-popup .customize {
+      background: #457b9d;
+      color: #fff;
+    }
+    .cookie-popup a {
+      color: #e63946;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .cookie-popup a:hover {
+      text-decoration: underline;
+    }
+    .cookie-settings {
+      display: none;
+      margin-top: 1rem;
+    }
+    .cookie-settings label {
+      display: block;
+      margin: 0.5rem 0;
+      font-size: 0.85rem;
+    }
+    .cookie-settings input {
+      margin-right: 0.5rem;
+    }
+    .cookie-settings button {
+      background: #1d3557;
+      color: #fff;
+      width: 100%;
+      padding: 0.5rem;
+      margin-top: 0.5rem;
+    }
+    @keyframes fadeInLeft {
+      from { opacity: 0; transform: translateX(-30px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes fadeInRight {
+      from { opacity: 0; transform: translateX(30px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translate(-50%, 40px); }
+      to { opacity: 1; transform: translate(-50%, -50%); }
+    }
+    
+ /* ---------- MOBILE RESPONSIVE ---------- */
+@media (max-width: 900px) {
+  body {
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    padding: 1.25rem 1rem 2rem;
+    text-align: center;
+    min-height: 100vh;
+  }
+
+  .logo {
+    position: static;
+    margin: 0.5rem 0 1.25rem;
+    justify-content: center;
+  }
+
+  .logo img {
+    width: 32px;
+  }
+
+  .left-content {
+    max-width: 100%;
+    width: 100%;
+    margin-bottom: 1.5rem;
+    animation: none;
+    order: 1;
+  }
+
+  .left-content h4 {
+    font-size: 0.8rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .left-content h1 {
+    font-size: 1.85rem;
+    line-height: 1.25;
+    margin-bottom: 0.75rem;
+  }
+
+  .left-content p {
+    font-size: 0.95rem;
+    margin-bottom: 1.5rem;
+    padding: 0 0.25rem;
+  }
+
+  .buttons {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .buttons button {
+    width: 100%;
+    max-width: 280px;
+    padding: 0.9rem 1.25rem;
+    font-size: 0.95rem;
+  }
+
+  .right-illustration {
+    width: 100%;
+    order: 2;
+    margin-top: 0.5rem;
+  }
+
+  .right-illustration img {
+    max-width: 100%;
+    width: 100%;
+    height: auto;
+    animation: none;
+  }
+
+  /* Login / Sign up popup */
+  .popup-form {
+    width: 92% !important;
+    max-width: 400px;
+    padding: 1.5rem 1.25rem !important;
+    max-height: 88vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .popup-form h3 {
+    font-size: 1.2rem;
+  }
+
+  .popup-form input,
+  .popup-form select,
+  .popup-form button {
+    font-size: 16px; /* stops iOS zoom on focus */
+    padding: 0.85rem;
+  }
+
+  .cookie-popup {
+    padding: 1.25rem 1rem;
+    text-align: center;
+  }
+
+  .cookie-popup .buttons {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cookie-popup button {
+    width: 100%;
+    padding: 0.75rem;
+  }
+}
+
+/* ---------- TABLET / MEDIUM ---------- */
+@media (max-width: 768px) {
+  .left-content h1 {
+    font-size: 1.7rem;
+  }
+
+  .right-illustration img {
+    max-width: 95%;
+  }
+}
+
+/* ---------- SMALL PHONES ---------- */
+@media (max-width: 480px) {
+  body {
+    padding: 1rem 0.85rem 1.5rem;
+  }
+
+  .logo span {
+    font-size: 1rem;
+  }
+
+  .left-content h1 {
+    font-size: 1.55rem;
+  }
+
+  .left-content h4 {
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+  }
+
+  .left-content p {
+    font-size: 0.9rem;
+  }
+
+  .buttons button {
+    max-width: 100%;
+  }
+
+  .popup-form {
+    width: 94% !important;
+    padding: 1.25rem 1rem !important;
+    border-radius: 12px;
+  }
+
+  .popup-form .close-btn {
+    top: 8px;
+    right: 12px;
+    font-size: 1.4rem;
+    padding: 4px 8px;
+  }
+
+  .cookie-popup h3 {
+    font-size: 1rem;
+  }
+
+  .cookie-popup p {
+    font-size: 0.85rem;
+  }
+
+  .preloader-content {
+    width: 160px;
+  }
+
+  .logo-animation img {
+    max-width: 160px;
+  }
+}
+
+/* Safe area for notched phones */
+@supports (padding: max(0px)) {
+  @media (max-width: 900px) {
+    body {
+      padding-left: max(0.85rem, env(safe-area-inset-left));
+      padding-right: max(0.85rem, env(safe-area-inset-right));
+      padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+    }
+    .cookie-popup {
+      padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+    }
+  }
+}
+
+.popup-form {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+
+/* --- Extra mobile polish for signup fields --- */
+@media (max-width: 900px) {
+  #roleSelect,
+  #accessCode,
+  #nameInput,
+  #emailInput,
+  #passwordInput {
+    font-size: 16px;      /* stops iOS auto-zoom */
+    padding: 0.85rem;
+    border-radius: 8px;
+  }
+
+  #roleSelect {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23444' d='M7 10l5 5 5-5z'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 0.9rem center;
+    background-size: 1.1rem;
+  }
+
+  .popup-form button[type="submit"],
+  .popup-form button[type="button"] {
+    min-height: 48px;   /* easier tap target */
+  }
+
+  .close-btn {
+    padding: 6px 10px;  /* bigger tap zone for X */
+  }
+}
+
+/* Cookie popup buttons full width + stacked already handled,
+   just bump tap targets a bit more on very small screens */
+@media (max-width: 480px) {
+  .cookie-popup .buttons button {
+    min-height: 46px;
+  }
+}
+
+
+
+
+
+@media (max-width: 900px) {
+  .right-illustration img {
+    max-width: 65%;
+    width: 65%;
+    max-height: 220px;   /* <-- caps how tall it can get */
+    height: auto;
+    margin: 0 auto;
+    display: block;
+  }
+}
+
+@media (max-width: 480px) {
+  .right-illustration img {
+    max-width: 55%;
+    width: 55%;
+    max-height: 160px;   /* <-- even smaller on tiny phones */
+  }
+}
+  </style>
+</head>
+<body>
+  
+  <div id="preloader">
+    <div class="preloader-content">
+      <div class="loading-line"></div>
+      <div class="logo-animation" id="logoAnimation">
+        <img src="images/Tidy Track Whole Logo- Website Scale.svg" alt="Tidy Track Logo">
+      </div>
+    </div>
+  </div>
+  <div class="logo">
+    <img src="images/Tidy Track Logomark- Website Scale.png" alt="Logo">
+    <span>Tidy Track</span>
+  </div>
+
+  <div class="left-content">
+    <h4>ORGANIZE. ASSIGN. ACHIEVE</h4>
+    <h1>Streamline tasks for your entire team</h1>
+    <p>Empower managers to assign and track tasks across the company</p>
+    <div class="buttons">
+      <button class="sign-in" onclick="openForm('login')">Login</button>
+      <button class="sign-up" onclick="openForm('signup')">Sign Up</button>
+    </div>
+  </div>
+
+  <div class="right-illustration">
+    <img src="images/bg.png" alt="Illustration">
+  </div>
+
+  <div class="cookie-popup" id="cookiePopup">
+    <h3>We Value Your Privacy</h3>
+    <p>We use cookies to enhance your experience. By continuing, you agree to our use of cookies as described in our <a href="privacy.html">Privacy Policy</a>.</p>
+    <div class="buttons">
+      <button class="accept" onclick="acceptCookies()">Accept All</button>
+      <button class="customize" onclick="showCookieSettings()">Customize</button>
+      
+    </div>
+    <div class="cookie-settings" id="cookieSettings">
+      <label><input type="checkbox" id="essentialCookies" checked disabled> Essential Cookies (Required)</label>
+      <label><input type="checkbox" id="analyticsCookies"> Analytics Cookies</label>
+      <button onclick="saveCookieSettings()">Save Settings</button>
+    </div>
+  </div>
+
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+  <div class="popup-form" id="formPopup">
+    <div class="close-btn" onclick="closeForm()">&times;</div>
+    <div class="error-container" id="errorContainer">
+      <ul id="errorList"></ul>
+    </div>
+    <h3 id="formTitle">Sign In</h3>
+    <form action="" method="POST" id="authForm">
+      <input type="text" id="nameInput" name="name" placeholder=" Your Name" style="display: none;">
+      <input type="email" id="emailInput" name="email" placeholder=" Email" required>
+      <input type="password" id="passwordInput" name="password" placeholder=" Password" required>
+      <select id="roleSelect" name="role" style="display: none;">
+        <option value="" disabled selected>Select Role</option>
+        <option value="Member">👥 Member</option>
+        <option value="Leader">📈 Leader</option>
+        <option value="Manager">💼 Manager</option>
+        <option value="Admin">🔐 Admin</option>
+      </select>
+      <!--<input type="password" id="adminCode" name="admin_code" placeholder="Admin access code" style="display: none;">-->
+      
+      <input type="password" id="accessCode" name="access_code" placeholder="Access code" style="display: none;">
+      
+  
+      
+      <button type="submit">Continue</button>
+      <div id="forgotPasswordLink" style="text-align: center; margin-top: 1rem; display: none;">
+        <a href="forgot_password.php" style="color: #e63946; text-decoration: none; font-size: 0.9rem;">Forgot Password?</a>
+      </div>
+      <div style="text-align: center; margin: 1rem 0;">OR</div>
+    <a href="google.php" style="text-decoration: none;">
+      <button type="button" style="width: 100%; padding: 0.75rem; background: #db4437; color: white; border: none; border-radius: 6px; cursor: pointer;">
+          Sign Up with Google
+      </button>
+    </a>
+    </form>
+  </div>
+
+  <script>
+    const form = document.getElementById('formPopup');
+    const title = document.getElementById('formTitle');
+    const nameInput = document.getElementById('nameInput');
+    const emailInput = document.getElementById('emailInput');
+    const passwordInput = document.getElementById('passwordInput');
+    const roleSelect = document.getElementById('roleSelect');
+    // const adminCode = document.getElementById('adminCode');
+    
+   const accessCode = document.getElementById('accessCode');
+    
+    const authForm = document.getElementById('authForm');
+    const errorContainer = document.getElementById('errorContainer');
+    const errorList = document.getElementById('errorList');
+    const cookiePopup = document.getElementById('cookiePopup');
+    const cookieSettings = document.getElementById('cookieSettings');
+    const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+    const preloader = document.getElementById('preloader');
+    const logoAnimation = document.getElementById('logoAnimation');
+
+   function openForm(type) {
+  // Reset form and errors
+  authForm.reset();
+  errorContainer.style.display = 'none';
+  errorList.innerHTML = '';
+  emailInput.classList.remove('error');
+  passwordInput.classList.remove('error');
+  nameInput.classList.remove('error');
+  roleSelect.classList.remove('error');
+  accessCode.classList.remove('error');
+  form.classList.remove('shake');
+
+  if (type === 'signup') {
+    title.innerText = 'Sign Up';
+    nameInput.style.display = 'block';
+    roleSelect.style.display = 'block';
+    roleSelect.required = true;
+
+    // show access code only after role is selected
+    accessCode.style.display = (roleSelect.value && roleSelect.value !== "") ? 'block' : 'none';
+    accessCode.required = true;
+
+    authForm.action = 'signup.php';
+    forgotPasswordLink.style.display = 'none';
+  } else {
+    title.innerText = 'Sign In';
+    nameInput.style.display = 'none';
+    roleSelect.style.display = 'none';
+    roleSelect.required = false;
+
+    accessCode.style.display = 'none';
+    accessCode.required = false;
+    accessCode.value = '';
+
+    authForm.action = 'login.php';
+    forgotPasswordLink.style.display = 'block';
+  }
+
+  form.style.display = 'block';
+  cookiePopup.style.display = 'none';
+}
+
+
+    // roleSelect.addEventListener('change', function() {
+    //   adminCode.style.display = this.value === 'Admin' ? 'block' : 'none';
+    //   adminCode.required = this.value === 'Admin';
+    // });
+    
+    
+    roleSelect.addEventListener('change', function() {
+  accessCode.style.display = (this.value && this.value !== "") ? 'block' : 'none';
+  accessCode.required = true;
+});
+
+ function closeForm() {
+  form.style.display = 'none';
+  authForm.reset();
+  errorContainer.style.display = 'none';
+  errorList.innerHTML = '';
+  emailInput.classList.remove('error');
+  passwordInput.classList.remove('error');
+  nameInput.classList.remove('error');
+  roleSelect.classList.remove('error');
+  accessCode.classList.remove('error');
+  form.classList.remove('shake');
+}  
+    function displayErrors(errors, fields) {
+  errorList.innerHTML = '';
+  
+  errors.forEach(error => {
+    const li = document.createElement('li');
+    li.innerHTML = error;   // Allows <br> and <strong>
+    errorList.appendChild(li);
+  });
+
+  errorContainer.style.display = 'block';
+  form.classList.add('shake');
+
+  // Highlight fields
+  fields.forEach(field => {
+    if (field === 'email') emailInput.classList.add('error');
+    if (field === 'password') passwordInput.classList.add('error');
+    if (field === 'name') nameInput.classList.add('error');
+    if (field === 'role') roleSelect.classList.add('error');
+    if (field === 'access_code') accessCode.classList.add('error');
+  });
+}
+    
+    // Function to hide the preloader
+    function hidePreloader() {
+      preloader.style.opacity = '0';
+      preloader.style.visibility = 'hidden';
+      // Also make sure the logo is hidden so it doesn't linger
+      logoAnimation.style.display = 'none'; 
+    }
+
+    // Check for errors in URL parameters and handle preloader
+    window.onload = function() {
+      // Start the logo animation after 2s
+      setTimeout(() => {
+        logoAnimation.style.display = 'block';
+      }, 2000); 
+
+      // Hide the preloader after the full 8-second duration (2s line + 6s logo)
+      setTimeout(hidePreloader, 8000); 
+
+      // Rest of your original onload code
+      if (!getCookie('cookie_consent')) {
+        cookiePopup.style.display = 'block';
+      }
+      const urlParams = new URLSearchParams(window.location.search);
+      const errors = urlParams.get('errors');
+      const fields = urlParams.get('fields');
+      const formType = urlParams.get('form');
+      if (errors && fields && formType) {
+        openForm(formType);
+        displayErrors(errors.split('|'), fields.split('|'));
+        // Clear URL parameters
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    };
+
+    function getCookie(name) {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop().split(';').shift();
+      return null;
+    }
+
+    function setCookie(name, value, days) {
+      const expires = new Date();
+      expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+      document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/`;
+    }
+
+    function acceptCookies() {
+      setCookie('cookie_consent', 'accepted', 365);
+      cookiePopup.style.display = 'none';
+    }
+
+    function showCookieSettings() {
+      cookieSettings.style.display = 'block';
+    }
+
+    function saveCookieSettings() {
+      const analytics = document.getElementById('analyticsCookies').checked;
+      setCookie('cookie_consent', analytics ? 'custom_analytics' : 'essential', 365);
+      cookiePopup.style.display = 'none';
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple Meeting Tool</title>
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      height: 100vh;
+      margin: 0;
+      padding-top: 40px;
+    }
+    h1 { color: #38bdf8; }
+    .video-grid {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    video {
+      width: 300px;
+      height: 200px;
+      background: black;
+      border-radius: 8px;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 10px;
+      border: none;
+      border-radius: 6px;
+      background: #2563eb;
+      color: white;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background: #1d4ed8;
+    }
+    input {
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎥 Simple Meeting Tool</h1>
+  <div id="controls">
+    <button id="createMeeting">Create Meeting</button>
+    <div id="meetingInfo" style="display:none;">
+      <p>Share this link:</p>
+      <input type="text" id="meetingLink" readonly style="width:320px;">
+    </div>
+    <div id="joinMeetingDiv">
+      <input type="text" id="joinId" placeholder="Enter meeting ID">
+      <button id="joinMeeting">Join Meeting</button>
+    </div>
+  </div>
+
+  <div class="video-grid" id="videoGrid"></div>
+
+  <script>
+    const peer = new Peer(); // Creates a PeerJS connection to default PeerServer
+    let localStream;
+    const videoGrid = document.getElementById('videoGrid');
+    const createBtn = document.getElementById('createMeeting');
+    const joinBtn = document.getElementById('joinMeeting');
+    const joinIdInput = document.getElementById('joinId');
+    const meetingInfo = document.getElementById('meetingInfo');
+    const meetingLinkInput = document.getElementById('meetingLink');
+
+    // Show local video
+    async function setupLocalStream() {
+      localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      const localVideo = document.createElement('video');
+      localVideo.muted = true;
+      localVideo.srcObject = localStream;
+      localVideo.play();
+      videoGrid.appendChild(localVideo);
+    }
+    setupLocalStream();
+
+    // When peer is ready
+    peer.on('open', id => {
+      console.log("My peer ID is:", id);
+
+      createBtn.onclick = () => {
+        const link = `${window.location.href.split('?')[0]}?room=${id}`;
+        meetingLinkInput.value = link;
+        meetingInfo.style.display = "block";
+        alert("Meeting created! Share the link.");
+      };
+
+      joinBtn.onclick = () => {
+        const remoteId = joinIdInput.value.trim();
+        if (remoteId) connectToPeer(remoteId);
+      };
+
+      // Auto-join if link has ?room=ID
+      const urlParams = new URLSearchParams(window.location.search);
+      const roomId = urlParams.get('room');
+      if (roomId) {
+        joinIdInput.value = roomId;
+        connectToPeer(roomId);
+      }
+    });
+
+    // Receive call
+    peer.on('call', call => {
+      call.answer(localStream);
+      const video = document.createElement('video');
+      call.on('stream', remoteStream => {
+        video.srcObject = remoteStream;
+        video.play();
+        videoGrid.appendChild(video);
+      });
+    });
+
+    // Connect to another peer
+    function connectToPeer(remoteId) {
+      const call = peer.call(remoteId, localStream);
+      const video = document.createElement('video');
+      call.on('stream', remoteStream => {
+        video.srcObject = remoteStream;
+        video.play();
+        videoGrid.appendChild(video);
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Audio Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+        .section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+        button { padding: 10px 20px; margin: 5px; background: #4361ee; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:disabled { background: #ccc; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        audio { width: 100%; margin: 10px 0; }
+        .log { background: #f8f9fa; padding: 10px; border-radius: 5px; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h1>Simple Audio Connection Test</h1>
+    
+    <div class="section">
+        <h2>1. Room Management</h2>
+        <button onclick="testAPI()">Test API Connection</button>
+        <button onclick="createRoom()">Create Room</button>
+        <button onclick="joinRoom()">Join Room</button>
+        <div>
+            <input type="text" id="roomCode" placeholder="Room code">
+            <input type="number" id="userId" value="1" placeholder="Your User ID">
+        </div>
+        <div id="roomStatus" class="status"></div>
+    </div>
+
+    <div class="section">
+        <h2>2. Audio Controls</h2>
+        <button onclick="initAudio()">Start Microphone</button>
+        <button onclick="toggleMic()" id="micBtn" disabled>🎤 Mute</button>
+        <div id="audioStatus" class="status"></div>
+        <audio id="localAudio" controls muted></audio>
+    </div>
+
+    <div class="section">
+        <h2>3. Connection Log</h2>
+        <div id="log" class="log"></div>
+    </div>
+
+<script>
+// Global variables
+let localStream = null;
+let roomCode = '';
+let currentUserId = 1;
+let isMicMuted = false;
+
+// DOM elements
+const roomStatus = document.getElementById('roomStatus');
+const audioStatus = document.getElementById('audioStatus');
+const logElement = document.getElementById('log');
+const micBtn = document.getElementById('micBtn');
+const localAudio = document.getElementById('localAudio');
+const roomCodeInput = document.getElementById('roomCode');
+const userIdInput = document.getElementById('userId');
+
+function log(message) {
+    const timestamp = new Date().toLocaleTimeString();
+    logElement.innerHTML += `[${timestamp}] ${message}\n`;
+    logElement.scrollTop = logElement.scrollHeight;
+    console.log(message);
+}
+
+// Test API connection first
+async function testAPI() {
+    try {
+        log('Testing API connection...');
+        const response = await fetch('test_api.php');
+        const text = await response.text();
+        
+        log(`Raw response: ${text.substring(0, 100)}...`);
+        
+        try {
+            const data = JSON.parse(text);
+            log(`✓ API is working: ${data.message}`);
+            roomStatus.innerHTML = `<div class="success">API connected successfully</div>`;
+        } catch (e) {
+            log(`✗ API returned invalid JSON. This usually means a PHP error.`);
+            roomStatus.innerHTML = `<div class="error">PHP Error - Check console</div>`;
+        }
+    } catch (error) {
+        log(`✗ API connection failed: ${error.message}`);
+        roomStatus.innerHTML = `<div class="error">Cannot connect to server</div>`;
+    }
+}
+
+// Create room
+async function createRoom() {
+    currentUserId = parseInt(userIdInput.value) || 1;
+    
+    try {
+        log('Creating room...');
+        const response = await fetch('create_room_meeting.php', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        });
+        
+        const text = await response.text();
+        log(`Raw create room response: ${text}`);
+        
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            log('✗ Failed to parse JSON response');
+            roomStatus.innerHTML = `<div class="error">Server returned invalid JSON. Check PHP errors.</div>`;
+            return;
+        }
+        
+        if (data.room) {
+            roomCode = data.room;
+            roomCodeInput.value = roomCode;
+            log(`✓ Room created: ${roomCode}`);
+            roomStatus.innerHTML = `<div class="success">Room created: ${roomCode}</div>`;
+            
+            // Start audio after room creation
+            await initAudio();
+        } else {
+            log(`✗ Room creation failed: ${data.error || 'Unknown error'}`);
+            roomStatus.innerHTML = `<div class="error">Failed to create room</div>`;
+        }
+        
+    } catch (error) {
+        log(`✗ Create room error: ${error.message}`);
+        roomStatus.innerHTML = `<div class="error">Network error: ${error.message}</div>`;
+    }
+}
+
+// Join room
+async function joinRoom() {
+    const code = roomCodeInput.value.trim();
+    currentUserId = parseInt(userIdInput.value) || 1;
+    
+    if (!code) {
+        alert('Please enter a room code');
+        return;
+    }
+    
+    try {
+        log(`Joining room: ${code}`);
+        const response = await fetch('join_room_meeting.php', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ room: code })
+        });
+        
+        const text = await response.text();
+        log(`Raw join response: ${text}`);
+        
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            log('✗ Failed to parse JSON response');
+            return;
+        }
+        
+        if (response.ok) {
+            roomCode = code;
+            log(`✓ Joined room: ${code}`);
+            roomStatus.innerHTML = `<div class="success">Joined room: ${code}</div>`;
+            await initAudio();
+        } else {
+            log(`✗ Failed to join room: ${data.error || 'Unknown error'}`);
+            roomStatus.innerHTML = `<div class="error">Failed to join room</div>`;
+        }
+        
+    } catch (error) {
+        log(`✗ Join room error: ${error.message}`);
+    }
+}
+
+// Audio functions
+async function initAudio() {
+    try {
+        log('Requesting microphone access...');
+        localStream = await navigator.mediaDevices.getUserMedia({ 
+            audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true
+            } 
+        });
+        
+        localAudio.srcObject = localStream;
+        micBtn.disabled = false;
+        audioStatus.innerHTML = `<div class="success">Microphone connected</div>`;
+        log('✓ Microphone access granted');
+        
+    } catch (error) {
+        log(`✗ Microphone error: ${error.message}`);
+        audioStatus.innerHTML = `<div class="error">Microphone access denied: ${error.message}</div>`;
+    }
+}
+
+function toggleMic() {
+    if (!localStream) return;
+    
+    isMicMuted = !isMicMuted;
+    localStream.getAudioTracks()[0].enabled = !isMicMuted;
+    micBtn.textContent = isMicMuted ? '🎤 Unmute' : '🎤 Mute';
+    log(`Microphone ${isMicMuted ? 'muted' : 'unmuted'}`);
+}
+
+// Initialize
+log('System ready. Click "Test API Connection" first.');
+userIdInput.addEventListener('change', () => {
+    currentUserId = parseInt(userIdInput.value) || 1;
+    log(`User ID set to: ${currentUserId}`);
+});
+</script>
+</body>
+</html>

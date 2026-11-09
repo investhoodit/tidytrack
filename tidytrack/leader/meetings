@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TSM Meeting Room</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #0a0a0a;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    header {
+      background: #111;
+      padding: 10px 20px;
+      text-align: center;
+      font-size: 1.5em;
+      font-weight: bold;
+      color: #e11d48;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: row;
+      padding: 10px;
+      gap: 10px;
+      overflow: hidden;
+    }
+
+    #left-panel {
+      flex: 3;
+      background: #181818;
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    input, button {
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+      outline: none;
+    }
+
+    input {
+      width: 200px;
+    }
+
+    button {
+      cursor: pointer;
+      background: #e11d48;
+      color: white;
+      font-weight: bold;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      background: #be123c;
+    }
+
+    #jitsi-container {
+      width: 100%;
+      height: 100%;
+      border-radius: 10px;
+      overflow: hidden;
+      display: none;
+    }
+
+    #right-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .panel {
+      background: #181818;
+      padding: 10px;
+      border-radius: 10px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    #chat-messages {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    #chat-input {
+      display: flex;
+      gap: 5px;
+    }
+
+    #chat-input input {
+      flex: 1;
+    }
+
+    #end-meeting {
+      margin-top: 10px;
+      background: #333;
+    }
+  </style>
+</head>
+<body>
+  <header>TSM Meeting Room</header>
+  <main>
+    <div id="left-panel">
+      <div id="controls">
+        <input type="text" id="room-name" placeholder="Enter room name">
+        <button id="start-meeting">Start Meeting</button>
+      </div>
+      <div id="jitsi-container"></div>
+      <button id="end-meeting" style="display:none;">End Meeting</button>
+    </div>
+
+    <div id="right-panel">
+      <div class="panel" id="participants">
+        <h3>Participants</h3>
+        <ul id="participant-list"></ul>
+      </div>
+      <div class="panel" id="chat">
+        <h3>Chat</h3>
+        <div id="chat-messages"></div>
+        <div id="chat-input">
+          <input type="text" id="chat-message" placeholder="Type a message">
+          <button id="send-message">Send</button>
+        </div>
+      </div>
+      <div class="panel" id="recording">
+        <h3>Recording</h3>
+        <button id="start-recording">Start Recording</button>
+        <button id="stop-recording">Stop Recording</button>
+        <a id="download-recording" style="display:none; color:#e11d48;">Download Recording</a>
+      </div>
+    </div>
+  </main>
+
+  <script src='https://meet.jit.si/external_api.js'></script>
+  <script>
+    const jitsiContainer = document.getElementById('jitsi-container');
+    const startBtn = document.getElementById('start-meeting');
+    const endBtn = document.getElementById('end-meeting');
+    const roomInput = document.getElementById('room-name');
+    const participantsList = document.getElementById('participant-list');
+    const chatMessages = document.getElementById('chat-messages');
+    const chatInput = document.getElementById('chat-message');
+    const sendBtn = document.getElementById('send-message');
+
+    let api = null;
+    let mediaRecorder;
+    let recordedChunks = [];
+
+    startBtn.onclick = () => {
+      const room = roomInput.value.trim() || `TSM-${Math.random().toString(36).substring(2, 8)}`;
+      roomInput.style.display = 'none';
+      startBtn.style.display = 'none';
+      jitsiContainer.style.display = 'block';
+      endBtn.style.display = 'block';
+
+      const options = {
+        roomName: room,
+        parentNode: jitsiContainer,
+        width: '100%',
+        height: '100%',
+        interfaceConfigOverwrite: {
+          SHOW_JITSI_WATERMARK: false,
+          MOBILE_APP_PROMO: false
+        },
+        configOverwrite: {
+          disableDeepLinking: true,
+          enableWelcomePage: false,
+          prejoinPageEnabled: false
+        }
+      };
+
+      api = new JitsiMeetExternalAPI('meet.jit.si', options);
+
+      api.addEventListeners({
+        participantJoined: updateParticipants,
+        participantLeft: updateParticipants,
+        videoConferenceJoined: updateParticipants,
+        displayNameChange: updateParticipants,
+        incomingMessage: handleIncomingMessage
+      });
+    };
+
+    endBtn.onclick = () => {
+      if (api) {
+        api.dispose();
+        api = null;
+      }
+      jitsiContainer.innerHTML = '';
+      jitsiContainer.style.display = 'none';
+      endBtn.style.display = 'none';
+      roomInput.style.display = 'block';
+      startBtn.style.display = 'block';
+    };
+
+    function updateParticipants() {
+      if (!api) return;
+      api.getParticipantsInfo().then(participants => {
+        participantsList.innerHTML = '';
+        participants.forEach(p => {
+          const li = document.createElement('li');
+          li.textContent = p.displayName || 'Guest';
+          participantsList.appendChild(li);
+        });
+      });
+    }
+
+    sendBtn.onclick = () => {
+      const msg = chatInput.value.trim();
+      if (!msg || !api) return;
+      api.executeCommand('sendChatMessage', msg);
+      chatMessages.innerHTML += `<div><b>You:</b> ${msg}</div>`;
+      chatInput.value = '';
+    };
+
+    function handleIncomingMessage(event) {
+      const { from, message } = event.data;
+      chatMessages.innerHTML += `<div><b>${from?.displayName || 'Guest'}:</b> ${message}</div>`;
+    }
+
+    const startRecBtn = document.getElementById('start-recording');
+    const stopRecBtn = document.getElementById('stop-recording');
+    const downloadLink = document.getElementById('download-recording');
+
+    startRecBtn.onclick = async () => {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      recordedChunks = [];
+      mediaRecorder.ondataavailable = e => {
+        if (e.data.size > 0) recordedChunks.push(e.data);
+      };
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(recordedChunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        downloadLink.href = url;
+        downloadLink.download = 'tsm-meeting.webm';
+        downloadLink.style.display = 'block';
+        downloadLink.textContent = 'Download Recording';
+      };
+      mediaRecorder.start();
+    };
+
+    stopRecBtn.onclick = () => {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+      }
+    };
+  </script>
+</body>
+</html>

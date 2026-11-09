@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>investhood in-houseApps</title>
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: Arial, sans-serif;
+    }
+
+    body {
+        color: white;
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        position: relative;
+        overflow-x: hidden;
+        padding-top: 70px; /* space for fixed navbar */
+    }
+
+    /* NAVIGATION BAR */
+    nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        background: rgba(0,0,0,0.8);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 30px;
+        z-index: 1000;
+        backdrop-filter: blur(6px);
+    }
+
+    nav .logo {
+        display: flex;
+        align-items: center;
+    }
+
+    nav .logo img {
+        height: 40px;
+        margin-right: 10px;
+    }
+
+    nav .logo span {
+        font-size: 20px;
+        font-weight: bold;
+        color: #00d1ff;
+        letter-spacing: 1px;
+    }
+
+    nav ul {
+        list-style: none;
+        display: flex;
+        gap: 20px;
+    }
+
+    nav ul li a {
+        color: white;
+        text-decoration: none;
+        font-size: 16px;
+        transition: color 0.3s ease;
+    }
+
+    nav ul li a:hover {
+        color: #00d1ff;
+    }
+
+    /* Slideshow Background Container */
+    #slideshow {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: -1;
+        overflow: hidden;
+    }
+
+    #slideshow img {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        opacity: 0;
+        transition: opacity 5s ease-in-out;
+    }
+
+    #slideshow img.active {
+        opacity: 0.45;
+    }
+
+    /* Gallery Layout */
+    .gallery {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        padding: 30px;
+        width: 90%;
+        max-width: 1000px;
+        background: rgba(0,0,0,0.55);
+        border-radius: 15px;
+    }
+
+    .gallery-item {
+        text-align: center;
+        transition: transform 0.3s ease;
+    }
+
+    .gallery-item:hover {
+        transform: scale(1.05);
+    }
+
+    .gallery-item img {
+        width: 100%;
+        border-radius: 10px;
+        box-shadow: 0px 4px 15px rgba(0,0,0,0.8);
+    }
+
+    .gallery-item p {
+        margin-top: 8px;
+        font-size: 14px;
+    }
+
+    h1 {
+        margin-bottom: 15px;
+        text-shadow: 0px 4px 10px rgba(0,0,0,0.9);
+    }
+</style>
+</head>
+<body>
+
+<!-- Navigation Bar -->
+<nav>
+    <div class="logo">
+        <img src="images/INVESTHOOD.jpg" alt="investhood Logo"> <!-- Replace investhood logo path -->
+        <span>Investhood</span>
+    </div>
+    <ul>
+        <li><a href="#">Home</a></li>
+        <li><a href="#">About</a></li>
+        <li><a href="#">Apps</a></li>
+        <li><a href="#">Contact</a></li>
+    </ul>
+</nav>
+
+<!-- Background Slideshow  any one in the team change change the photos  -->
+<div id="slideshow">
+    <img src="images/box.jpg" class="active">
+    <img src="images/chip.jpg">
+    <img src="images/deco.jpg">
+    <img src="images/game.jpg">
+    <img src="images/box.jpg">
+    <img src="images/ai.jpg">
+</div>
+<!-- links to the other company apps -->
+<h1>Investhood In-House Apps</h1>
+<div class="gallery">
+    <a href="https://investhoodarcade.com/eSchooling/" class="gallery-item">
+        <img src="images/code.jpg" alt="Photo 1">
+        <p>Investhood E-Learning</p>
+    </a>
+    <a href="#" class="gallery-item">
+        <img src="images/recruitment.jpg" alt="Photo 4">
+        <p>Investhood Recruitment App</p>
+    </a>
+    <a href="#" class="gallery-item">
+        <img src="images/work.jpg" alt="Photo 5">
+        <p>Investhood TSM</p>
+    </a>
+    <a href="https://example.com/6" class="gallery-item">
+        <img src="images/ai.jpg" alt="Photo 6">
+        <p>AI Learning</p>
+    </a>
+    <a href="https://investhoodarcade.com/login.php" class="gallery-item">
+        <img src="images/arcade.jpg" alt="Photo 3">
+        <p>Investhood Arcade</p>
+    </a>
+    <a href="https://investhoodacademy.com/" class="gallery-item">
+        <img src="images/bot.jpg" alt="Photo 2">
+        <p>Investhood Academy</p>
+    </a>
+</div>
+<!-- slide show function java script  -->
+<script>
+    const slides = document.querySelectorAll("#slideshow img");
+    let currentSlide = 0;
+
+    function showNextSlide() {
+        slides[currentSlide].classList.remove("active");
+        currentSlide = (currentSlide + 1) % slides.length;
+        slides[currentSlide].classList.add("active");
+    }
+
+    setInterval(showNextSlide, 7000);
+</script>
+
+</body>
+</html>
